@@ -1,7 +1,7 @@
 'use server';
 
-import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder } from '@/lib/api/rentsyst';
-import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams } from '@/lib/api/types';
+import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder, getCountries } from '@/lib/api/rentsyst';
+import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, Country } from '@/lib/api/types';
 
 export interface SearchFormState {
   vehicles: SearchResponse['vehicles'] | null;
@@ -167,5 +167,15 @@ export async function confirmOrderAction(
       success: false,
       error: err instanceof Error ? err.message : 'Failed to confirm order',
     };
+  }
+}
+
+export async function getCountriesAction(): Promise<Country[]> {
+  try {
+    const countries = await getCountries('EN');
+    return countries;
+  } catch (err) {
+    console.error('Failed to fetch countries:', err);
+    return [];
   }
 }

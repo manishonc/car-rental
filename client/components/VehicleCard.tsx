@@ -1,14 +1,16 @@
 import { Vehicle } from '@/lib/api/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
   onBook?: (vehicle: Vehicle) => void;
+  isLoading?: boolean;
 }
 
-export function VehicleCard({ vehicle, onBook }: VehicleCardProps) {
+export function VehicleCard({ vehicle, onBook, isLoading }: VehicleCardProps) {
   return (
     <Card className="overflow-hidden py-0">
       <div className="relative h-48 bg-muted">
@@ -70,8 +72,16 @@ export function VehicleCard({ vehicle, onBook }: VehicleCardProps) {
             onClick={() => onBook(vehicle)} 
             className="w-full" 
             size="lg"
+            disabled={isLoading}
           >
-            Book Now
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating Order...
+              </>
+            ) : (
+              'Book Now'
+            )}
           </Button>
         )}
       </CardFooter>

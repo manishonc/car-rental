@@ -1,4 +1,4 @@
-import { AuthResponse, CompanySettings, SearchParams, SearchResponse, CreateOrderParams, CreateOrderResponse, ConfirmOrderParams, ConfirmOrderResponse, FileUploadResponse, UpdateOrderParams, UpdateOrderResponse } from './types';
+import { AuthResponse, CompanySettings, SearchParams, SearchResponse, CreateOrderParams, CreateOrderResponse, ConfirmOrderParams, ConfirmOrderResponse, FileUploadResponse, UpdateOrderParams, UpdateOrderResponse, Country } from './types';
 import { getStoredToken, storeToken, getFallbackToken } from './token-store';
 
 // In-memory cache for current process
@@ -300,7 +300,7 @@ export async function updateOrder(orderId: string, params: UpdateOrderParams): P
     throw new Error('Missing RENTSYST_API_URL');
   }
 
-  const url = `${apiUrl}/v2/order/update/${orderId}`;
+  const url = `${apiUrl}/order/update/${orderId}`;
   const startTime = Date.now();
   console.log('[API] updateOrder: Request started', {
     url,
@@ -358,7 +358,7 @@ export async function confirmOrder(orderId: string, params: ConfirmOrderParams):
     url,
     method: 'POST',
     orderId,
-    body: params,
+    body: JSON.stringify(params, null, 2),
   });
 
   const response = await fetch(url, {
@@ -447,6 +447,56 @@ export async function uploadFile(file: File): Promise<FileUploadResponse> {
     fileId: data.id,
     fileUrl: data.url,
     status: data.status,
+    responseTime: `${responseTime}ms`,
+  });
+
+  return data;
+}
+
+export async function getCountries(lang: string = 'EN'): Promise<Country[]> {
+  const token = await getAccessToken();
+  const apiUrl = process.env.RENTSYST_API_URL;
+
+  if (!apiUrl) {
+    throw new Error('Missing RENTSYST_API_URL');
+  }
+
+  const url = `${apiUrl}/resources/country?lang=${lang}`;
+  const startTime = Date.now();
+  console.log('[API] getCountries: Request started', {
+    url,
+    method: 'GET',
+    lang,
+  });
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const responseTime = Date.now() - startTime;
+  console.log('[API] getCountries: Response received', {
+    status: response.status,
+    statusText: response.statusText,
+    responseTime: `${responseTime}ms`,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unable to read error response');
+    console.error('[API] getCountries: Error response', {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody: errorText,
+    });
+    throw new Error(`Failed to fetch countries: ${response.status}`);
+  }
+
+  const data: Country[] = await response.json();
+  console.log('[API] getCountries: Success', {
+    countriesCount: data.length,
     responseTime: `${responseTime}ms`,
   });
 

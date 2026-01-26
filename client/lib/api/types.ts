@@ -179,3 +179,9 @@ export interface UpdateOrderParams {
 export interface UpdateOrderResponse {
   [key: string]: any; // Response structure may vary
 }
+
+export interface Country {
+  name: string;
+  id: string;
+  iso_code: string;
+}
