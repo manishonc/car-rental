@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Calendar, MapPin, AlertCircle, CarFront } from 'lucide-react';
 import { useBooking } from '../BookingContext';
-import { searchCars, getLocations } from '@/app/actions';
+import { searchCars, getLocations, cancelOrderAction } from '@/app/actions';
 
 export function SearchStep() {
   const { state, dispatch, nextStep } = useBooking();
@@ -80,6 +80,20 @@ export function SearchStep() {
     if (returnDateTime <= pickupDateTime) {
       dispatch({ type: 'SET_SEARCH_ERROR', payload: 'Return date must be after pickup date' });
       return;
+    }
+
+    // Cancel existing draft order before new search
+    if (state.orderId) {
+      console.log('[SearchStep] Cancelling existing draft order:', state.orderId);
+      const cancelResult = await cancelOrderAction(state.orderId);
+
+      if (!cancelResult.success) {
+        console.warn('[SearchStep] Failed to cancel existing order:', cancelResult.error);
+        // Continue anyway - don't block user from searching
+      }
+
+      // Clear order ID from state
+      dispatch({ type: 'SET_ORDER_ID', payload: null });
     }
 
     // Store search dates

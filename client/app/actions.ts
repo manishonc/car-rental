@@ -1,7 +1,7 @@
 'use server';
 
-import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder, getCountries } from '@/lib/api/rentsyst';
-import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, Country } from '@/lib/api/types';
+import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder, getCountries, cancelOrder } from '@/lib/api/rentsyst';
+import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, Country, CancelOrderResponse } from '@/lib/api/types';
 
 export interface SearchFormState {
   vehicles: SearchResponse['vehicles'] | null;
@@ -166,6 +166,27 @@ export async function confirmOrderAction(
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Failed to confirm order',
+    };
+  }
+}
+
+export interface CancelOrderResult {
+  success: boolean;
+  error: string | null;
+}
+
+export async function cancelOrderAction(orderId: string): Promise<CancelOrderResult> {
+  try {
+    await cancelOrder(orderId);
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error('Order cancellation error:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to cancel order',
     };
   }
 }

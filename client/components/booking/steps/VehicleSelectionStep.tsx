@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { VehicleCard } from '@/components/VehicleCard';
 import { ArrowLeft, Loader2, Car, AlertTriangle } from 'lucide-react';
 import { useBooking } from '../BookingContext';
-import { createOrderAction } from '@/app/actions';
+import { createOrderAction, cancelOrderAction } from '@/app/actions';
 import { Vehicle } from '@/lib/api/types';
 
 export function VehicleSelectionStep() {
@@ -29,6 +29,26 @@ export function VehicleSelectionStep() {
         payload: 'Missing search information. Please search again.',
       });
       return;
+    }
+
+    // Cancel existing draft order before creating new one
+    if (state.orderId) {
+      console.log('[VehicleSelection] Cancelling existing draft order:', state.orderId);
+
+      // Show loading state during cancellation
+      dispatch({ type: 'SET_IS_CREATING_ORDER', payload: true });
+      dispatch({ type: 'SET_ORDER_ERROR', payload: null });
+
+      const cancelResult = await cancelOrderAction(state.orderId);
+
+      if (!cancelResult.success) {
+        console.warn('[VehicleSelection] Failed to cancel existing order:', cancelResult.error);
+        // Continue anyway - will create new order
+      }
+
+      // Clear previous order state
+      dispatch({ type: 'SET_ORDER_ID', payload: null });
+      dispatch({ type: 'SET_SELECTED_VEHICLE', payload: null });
     }
 
     dispatch({ type: 'SET_IS_CREATING_ORDER', payload: true });
