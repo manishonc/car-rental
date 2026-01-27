@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, startTransition } from 'react';
+import React, { useState, useEffect, startTransition, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Plus, X, Trash2, Loader2, ImageIcon, AlertCircle } from 'lucide-react';
 import { useBooking } from '../BookingContext';
@@ -12,6 +11,239 @@ import { Driver, Country } from '@/lib/api/types';
 
 interface ValidationErrors {
   [key: string]: string;
+}
+
+// Compact floating label input component
+function FloatingInput({
+  id,
+  label,
+  type = 'text',
+  value,
+  onChange,
+  error,
+  placeholder,
+  required = false,
+  disabled = false,
+}: {
+  id: string;
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        type={type}
+        id={id}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder || `${label}${required ? ' *' : ''}`}
+        disabled={disabled}
+        className={`
+          h-12 pt-2 
+          bg-slate-50/80 border-slate-200/80 
+          rounded-xl text-gray-800
+          placeholder:text-gray-400 placeholder:text-sm
+          focus:bg-white focus:border-blue-400
+          transition-all duration-200
+          ${error ? 'border-red-400 bg-red-50/50' : ''}
+        `}
+      />
+      {error && (
+        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Compact floating label select component  
+function FloatingSelect({
+  id,
+  label,
+  value,
+  onValueChange,
+  error,
+  required = false,
+  disabled = false,
+  children,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  error?: string;
+  required?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative">
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+        <SelectTrigger
+          id={id}
+          className={`
+            h-12 pt-2
+            bg-slate-50/80 border-slate-200/80
+            rounded-xl text-gray-800
+            focus:bg-white focus:border-blue-400
+            transition-all duration-200
+            ${error ? 'border-red-400 bg-red-50/50' : ''}
+            ${!value ? '[&>span]:text-gray-400 [&>span]:text-sm' : ''}
+          `}
+        >
+          <SelectValue placeholder={placeholder || `${label}${required ? ' *' : ''}`} />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
+      {error && (
+        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Email input with clear button
+function EmailInput({
+  id,
+  value,
+  onChange,
+  error,
+  required = false,
+}: {
+  id: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Input
+          type="email"
+          id={id}
+          value={value}
+          onChange={onChange}
+          placeholder={`Email${required ? ' *' : ''}`}
+          className={`
+            h-12 pt-2 pr-10
+            bg-blue-50/50 border-blue-200/50
+            rounded-xl text-gray-800
+            placeholder:text-gray-400 placeholder:text-sm
+            focus:bg-white focus:border-blue-400
+            transition-all duration-200
+            ${error ? 'border-red-400 bg-red-50/50' : ''}
+          `}
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-300 hover:bg-gray-400 flex items-center justify-center transition-colors"
+          >
+            <X className="w-3 h-3 text-white" />
+          </button>
+        )}
+      </div>
+      {error && (
+        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Date input with label (for date inputs that don't support placeholders)
+function FloatingDateInput({
+  id,
+  label,
+  value,
+  onChange,
+  error,
+  required = false,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  required?: boolean;
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const showDatePicker = isFocused || value;
+
+  const handlePlaceholderClick = () => {
+    setIsFocused(true);
+    // Small delay to ensure input is rendered before focusing
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.showPicker?.();
+    }, 10);
+  };
+
+  return (
+    <div className="relative">
+      {!showDatePicker ? (
+        // Placeholder view - looks like a text input
+        <div
+          onClick={handlePlaceholderClick}
+          className={`
+            h-12 w-full px-3 flex items-center
+            bg-slate-50/80 border border-slate-200/80
+            rounded-xl text-gray-400 text-sm
+            cursor-pointer
+            hover:border-blue-400 hover:bg-white
+            transition-all duration-200
+            ${error ? 'border-red-400 bg-red-50/50' : ''}
+          `}
+        >
+          {label}{required ? ' *' : ''}
+        </div>
+      ) : (
+        // Date picker view
+        <Input
+          ref={inputRef}
+          type="date"
+          id={id}
+          value={value}
+          onChange={onChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className={`
+            h-12
+            bg-slate-50/80 border-slate-200/80 
+            rounded-xl text-gray-800 text-sm
+            focus:bg-white focus:border-blue-400
+            transition-all duration-200
+            ${error ? 'border-red-400 bg-red-50/50' : ''}
+          `}
+        />
+      )}
+      {error && (
+        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function DriverDataStep() {
@@ -227,17 +459,11 @@ export function DriverDataStep() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="outline" onClick={prevStep}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Vehicle Selection
-      </Button>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {drivers.map((driver, driverIndex) => (
           <div
             key={driverIndex}
-            className="bg-card rounded-xl border shadow-sm p-6 relative"
+            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden"
           >
             {/* Remove Driver Button */}
             {driverIndex > 0 && (
@@ -245,361 +471,236 @@ export function DriverDataStep() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute top-4 right-4"
+                className="absolute top-4 right-4 z-10"
                 onClick={() => removeDriver(driverIndex)}
               >
                 <X className="w-4 h-4" />
               </Button>
             )}
 
-            <h3 className="text-lg font-semibold mb-4">
-              {driverIndex === 0 ? 'Head Driver' : `Additional Driver ${driverIndex}`}
-            </h3>
+            {/* Section Header */}
+            <div className="text-center py-4 border-b border-slate-100">
+              <h3 className="text-base font-semibold text-gray-800">
+                {driverIndex === 0 ? 'Head driver' : `Additional Driver ${driverIndex}`}
+              </h3>
+            </div>
 
             {/* Personal Information */}
-            <div className="space-y-4 mb-6">
-              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Personal Information
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_first_name`}>
-                    First Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    id={`driver_${driverIndex}_first_name`}
-                    value={driver.first_name}
-                    onChange={(e) => updateDriver(driverIndex, 'first_name', e.target.value)}
-                    className={validationErrors[`${driverIndex}_first_name`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_first_name`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_first_name`]}
-                    </p>
-                  )}
-                </div>
+            <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+              {/* Row 1: First Name, Second Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <FloatingInput
+                  id={`driver_${driverIndex}_first_name`}
+                  label="First Name"
+                  value={driver.first_name}
+                  onChange={(e) => updateDriver(driverIndex, 'first_name', e.target.value)}
+                  error={validationErrors[`${driverIndex}_first_name`]}
+                  required
+                />
+                <FloatingInput
+                  id={`driver_${driverIndex}_last_name`}
+                  label="Second Name"
+                  value={driver.last_name}
+                  onChange={(e) => updateDriver(driverIndex, 'last_name', e.target.value)}
+                  error={validationErrors[`${driverIndex}_last_name`]}
+                  required
+                />
+              </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_last_name`}>
-                    Last Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    id={`driver_${driverIndex}_last_name`}
-                    value={driver.last_name}
-                    onChange={(e) => updateDriver(driverIndex, 'last_name', e.target.value)}
-                    className={validationErrors[`${driverIndex}_last_name`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_last_name`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_last_name`]}
-                    </p>
-                  )}
-                </div>
+              {/* Row 2: Email, Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <EmailInput
+                  id={`driver_${driverIndex}_email`}
+                  value={driver.email}
+                  onChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
+                  error={validationErrors[`${driverIndex}_email`]}
+                  required
+                />
+                <FloatingInput
+                  id={`driver_${driverIndex}_phone`}
+                  label="Phone number"
+                  type="tel"
+                  value={driver.phone}
+                  onChange={(e) => updateDriver(driverIndex, 'phone', e.target.value)}
+                  error={validationErrors[`${driverIndex}_phone`]}
+                  required
+                />
+              </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_email`}>
-                    Email <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="email"
-                    id={`driver_${driverIndex}_email`}
-                    value={driver.email}
-                    onChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
-                    className={validationErrors[`${driverIndex}_email`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_email`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_email`]}
-                    </p>
-                  )}
-                </div>
+              {/* Row 3: Country, City */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <FloatingSelect
+                  id={`driver_${driverIndex}_country`}
+                  label="Country"
+                  value={driver.country}
+                  onValueChange={(value) => updateDriver(driverIndex, 'country', value)}
+                  error={validationErrors[`${driverIndex}_country`]}
+                  disabled={loadingCountries}
+                  placeholder={loadingCountries ? 'Loading...' : 'Country *'}
+                  required
+                >
+                  {countries.map((country) => (
+                    <SelectItem key={country.id} value={country.id}>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </FloatingSelect>
+                <FloatingInput
+                  id={`driver_${driverIndex}_city`}
+                  label="City"
+                  value={driver.city}
+                  onChange={(e) => updateDriver(driverIndex, 'city', e.target.value)}
+                  error={validationErrors[`${driverIndex}_city`]}
+                  required
+                />
+              </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_phone`}>
-                    Phone Number <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="tel"
-                    id={`driver_${driverIndex}_phone`}
-                    value={driver.phone}
-                    onChange={(e) => updateDriver(driverIndex, 'phone', e.target.value)}
-                    placeholder="+41 XXX XXX XXXX"
-                    className={validationErrors[`${driverIndex}_phone`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_phone`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_phone`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_country`}>
-                    Country <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={driver.country}
-                    onValueChange={(value) => updateDriver(driverIndex, 'country', value)}
-                    disabled={loadingCountries}
-                  >
-                    <SelectTrigger
-                      className={`w-full ${validationErrors[`${driverIndex}_country`] ? 'border-destructive' : ''}`}
-                      id={`driver_${driverIndex}_country`}
-                    >
-                      <SelectValue placeholder={loadingCountries ? 'Loading countries...' : 'Select a country'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country.id} value={country.id}>
-                          {country.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {validationErrors[`${driverIndex}_country`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_country`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_city`}>
-                    City <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    id={`driver_${driverIndex}_city`}
-                    value={driver.city}
-                    onChange={(e) => updateDriver(driverIndex, 'city', e.target.value)}
-                    className={validationErrors[`${driverIndex}_city`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_city`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_city`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label htmlFor={`driver_${driverIndex}_address`}>
-                    Address <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    id={`driver_${driverIndex}_address`}
-                    value={driver.address}
-                    onChange={(e) => updateDriver(driverIndex, 'address', e.target.value)}
-                    className={validationErrors[`${driverIndex}_address`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_address`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_address`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_birthday`}>
-                    Date of Birth <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    id={`driver_${driverIndex}_birthday`}
-                    value={driver.birthday}
-                    onChange={(e) => updateDriver(driverIndex, 'birthday', e.target.value)}
-                    className={validationErrors[`${driverIndex}_birthday`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_birthday`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_birthday`]}
-                    </p>
-                  )}
-                </div>
+              {/* Row 4: Address, Date of birthday */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <FloatingInput
+                  id={`driver_${driverIndex}_address`}
+                  label="Address"
+                  value={driver.address}
+                  onChange={(e) => updateDriver(driverIndex, 'address', e.target.value)}
+                  error={validationErrors[`${driverIndex}_address`]}
+                  required
+                />
+                <FloatingDateInput
+                  id={`driver_${driverIndex}_birthday`}
+                  label="Date of birthday"
+                  value={driver.birthday}
+                  onChange={(e) => updateDriver(driverIndex, 'birthday', e.target.value)}
+                  error={validationErrors[`${driverIndex}_birthday`]}
+                  required
+                />
               </div>
             </div>
 
             {/* Driver License Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Driver License
+            <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+              <h4 className="text-sm font-semibold text-gray-800 mb-4">
+                Driver license
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_license_num`}>
-                    License Number <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    id={`driver_${driverIndex}_license_num`}
-                    value={driver.license_num}
-                    onChange={(e) => updateDriver(driverIndex, 'license_num', e.target.value)}
-                    className={validationErrors[`${driverIndex}_license_num`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_license_num`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_license_num`]}
-                    </p>
-                  )}
-                </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_license_from`}>
-                    Issue Date <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    id={`driver_${driverIndex}_license_from`}
-                    value={driver.license_from}
-                    onChange={(e) => updateDriver(driverIndex, 'license_from', e.target.value)}
-                    className={validationErrors[`${driverIndex}_license_from`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_license_from`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_license_from`]}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor={`driver_${driverIndex}_license_to`}>
-                    Expiry Date <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    id={`driver_${driverIndex}_license_to`}
-                    value={driver.license_to}
-                    onChange={(e) => updateDriver(driverIndex, 'license_to', e.target.value)}
-                    className={validationErrors[`${driverIndex}_license_to`] ? 'border-destructive' : ''}
-                  />
-                  {validationErrors[`${driverIndex}_license_to`] && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {validationErrors[`${driverIndex}_license_to`]}
-                    </p>
-                  )}
-                </div>
-
-                {/* File Upload */}
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label>License Photo</Label>
-
-                  {/* Upload Area */}
-                  <label
-                    htmlFor={`driver_${driverIndex}_license_photo`}
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
-                  >
-                    {Object.keys(uploadingFiles).some((key) =>
-                      key.startsWith(`${driverIndex}_`)
-                    ) ? (
-                      <div className="flex flex-col items-center justify-center">
-                        <Loader2 className="w-8 h-8 text-muted-foreground mb-2 animate-spin" />
-                        <p className="text-sm text-muted-foreground">Uploading...</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center">
-                        <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload license photos
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          PNG, JPG up to 5MB
-                        </p>
-                      </div>
-                    )}
-                    <Input
-                      type="file"
-                      id={`driver_${driverIndex}_license_photo`}
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(driverIndex, e.target.files)}
-                    />
-                  </label>
-
-                  {/* Upload Errors */}
-                  {Object.entries(uploadErrors)
-                    .filter(([key]) => key.startsWith(`${driverIndex}_`))
-                    .map(([key, error]) => (
-                      <p key={key} className="text-sm text-destructive flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {error}
-                      </p>
-                    ))}
-
-                  {/* Uploaded Files */}
-                  {uploadedFiles[driverIndex] && uploadedFiles[driverIndex].length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {uploadedFiles[driverIndex].map((file, fileIndex) => (
-                        <div
-                          key={`${driverIndex}_${fileIndex}`}
-                          className="flex items-center gap-3 p-3 border rounded-lg bg-muted/50"
-                        >
-                          {/* Thumbnail */}
-                          <div className="flex-shrink-0 w-14 h-14 rounded border overflow-hidden bg-background">
-                            {file.url ? (
-                              <img
-                                src={file.url}
-                                alt={file.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* File Details */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{file.name}</p>
-                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded">
-                              Uploaded
-                            </span>
-                          </div>
-
-                          {/* Remove Button */}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeUploadedFile(driverIndex, fileIndex)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {/* License Fields - responsive: 1 col mobile, 3 cols desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <FloatingInput
+                  id={`driver_${driverIndex}_license_num`}
+                  label="Document number"
+                  value={driver.license_num}
+                  onChange={(e) => updateDriver(driverIndex, 'license_num', e.target.value)}
+                  error={validationErrors[`${driverIndex}_license_num`]}
+                  required
+                />
+                <FloatingDateInput
+                  id={`driver_${driverIndex}_license_from`}
+                  label="Issue date"
+                  value={driver.license_from}
+                  onChange={(e) => updateDriver(driverIndex, 'license_from', e.target.value)}
+                  error={validationErrors[`${driverIndex}_license_from`]}
+                  required
+                />
+                <FloatingDateInput
+                  id={`driver_${driverIndex}_license_to`}
+                  label="Exp date"
+                  value={driver.license_to}
+                  onChange={(e) => updateDriver(driverIndex, 'license_to', e.target.value)}
+                  error={validationErrors[`${driverIndex}_license_to`]}
+                  required
+                />
               </div>
+
+              {/* Upload Area - Compact */}
+              <div className="flex flex-wrap items-start gap-3 sm:gap-4">
+                <label
+                  htmlFor={`driver_${driverIndex}_license_photo`}
+                  className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200"
+                >
+                  {Object.keys(uploadingFiles).some((key) =>
+                    key.startsWith(`${driverIndex}_`)
+                  ) ? (
+                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-5 h-5 text-gray-400" />
+                      <span className="text-xs text-gray-400 mt-1">Upload</span>
+                    </>
+                  )}
+                  <Input
+                    type="file"
+                    id={`driver_${driverIndex}_license_photo`}
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(driverIndex, e.target.files)}
+                  />
+                </label>
+
+                {/* Uploaded Files - Horizontal scroll */}
+                {uploadedFiles[driverIndex] && uploadedFiles[driverIndex].length > 0 && (
+                  <div className="flex-1 flex gap-3 overflow-x-auto py-1">
+                    {uploadedFiles[driverIndex].map((file, fileIndex) => (
+                      <div
+                        key={`${driverIndex}_${fileIndex}`}
+                        className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 group"
+                      >
+                        {file.url ? (
+                          <img
+                            src={file.url}
+                            alt={file.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="w-6 h-6 text-gray-400" />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeUploadedFile(driverIndex, fileIndex)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Errors */}
+              {Object.entries(uploadErrors)
+                .filter(([key]) => key.startsWith(`${driverIndex}_`))
+                .map(([key, error]) => (
+                  <p key={key} className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {error}
+                  </p>
+                ))}
             </div>
           </div>
         ))}
+        {/* Add New Driver Button - Part of drivers section */}
+        <button
+          type="button"
+          onClick={addDriver}
+          className="w-full py-4 border-2 border-dashed border-slate-300 rounded-2xl text-blue-500 font-medium hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Add new driver
+        </button>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <Button type="button" variant="outline" onClick={addDriver}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Another Driver
-          </Button>
-
-          <Button type="submit" size="lg" disabled={isAnyUploading}>
+        {/* Continue Button - Standalone action */}
+        <div className="pt-4">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isAnyUploading}
+            className="w-full rounded-xl py-6 bg-primary hover:bg-primary/90 text-base font-medium"
+          >
             {isAnyUploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Continue to Extras
           </Button>

@@ -1,4 +1,4 @@
-import { AuthResponse, CompanySettings, SearchParams, SearchResponse, CreateOrderParams, CreateOrderResponse, ConfirmOrderParams, ConfirmOrderResponse, FileUploadResponse, UpdateOrderParams, UpdateOrderResponse, Country } from './types';
+import { AuthResponse, CompanySettings, SearchParams, SearchResponse, CreateOrderParams, CreateOrderResponse, ConfirmOrderParams, ConfirmOrderResponse, FileUploadResponse, UpdateOrderParams, UpdateOrderResponse, CancelOrderResponse, Country } from './types';
 import { getStoredToken, storeToken, getFallbackToken } from './token-store';
 
 // In-memory cache for current process
@@ -390,6 +390,57 @@ export async function confirmOrder(orderId: string, params: ConfirmOrderParams):
   const data: ConfirmOrderResponse = await response.json();
   console.log('[API] confirmOrder: Success', {
     orderId,
+    responseTime: `${responseTime}ms`,
+  });
+
+  return data;
+}
+
+export async function cancelOrder(orderId: string): Promise<CancelOrderResponse> {
+  const token = await getAccessToken();
+  const apiUrl = process.env.RENTSYST_API_URL;
+
+  if (!apiUrl) {
+    throw new Error('Missing RENTSYST_API_URL');
+  }
+
+  const url = `${apiUrl}/order/cancel/${orderId}`;
+  const startTime = Date.now();
+  console.log('[API] cancelOrder: Request started', {
+    url,
+    method: 'POST',
+    orderId,
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const responseTime = Date.now() - startTime;
+  console.log('[API] cancelOrder: Response received', {
+    status: response.status,
+    statusText: response.statusText,
+    responseTime: `${responseTime}ms`,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unable to read error response');
+    console.error('[API] cancelOrder: Error response', {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody: errorText,
+    });
+    throw new Error(`Order cancellation failed: ${response.status}`);
+  }
+
+  const data: CancelOrderResponse = await response.json();
+  console.log('[API] cancelOrder: Success', {
+    orderId,
+    status: data.status,
     responseTime: `${responseTime}ms`,
   });
 

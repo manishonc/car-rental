@@ -180,6 +180,10 @@ export interface UpdateOrderResponse {
   [key: string]: any; // Response structure may vary
 }
 
+export interface CancelOrderResponse {
+  status: string;
+}
+
 export interface Country {
   name: string;
   id: string;

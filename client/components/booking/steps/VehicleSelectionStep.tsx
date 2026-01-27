@@ -2,9 +2,9 @@
 
 import { Button } from '@/components/ui/button';
 import { VehicleCard } from '@/components/VehicleCard';
-import { ArrowLeft, Loader2, Car } from 'lucide-react';
+import { ArrowLeft, Loader2, Car, AlertTriangle } from 'lucide-react';
 import { useBooking } from '../BookingContext';
-import { createOrderAction } from '@/app/actions';
+import { createOrderAction, cancelOrderAction } from '@/app/actions';
 import { Vehicle } from '@/lib/api/types';
 
 export function VehicleSelectionStep() {
@@ -23,12 +23,26 @@ export function VehicleSelectionStep() {
   };
 
   const handleBookVehicle = async (vehicle: Vehicle) => {
+    // ... logic remains same, but let's keep it clean
     if (!searchDates || !selectedLocation) {
       dispatch({
         type: 'SET_ORDER_ERROR',
         payload: 'Missing search information. Please search again.',
       });
       return;
+    }
+
+    // Cancel existing draft order before creating new one
+    if (state.orderId) {
+      console.log('[VehicleSelection] Cancelling existing draft order:', state.orderId);
+      dispatch({ type: 'SET_IS_CREATING_ORDER', payload: true });
+      dispatch({ type: 'SET_ORDER_ERROR', payload: null });
+      const cancelResult = await cancelOrderAction(state.orderId);
+      if (!cancelResult.success) {
+        console.warn('[VehicleSelection] Failed to cancel existing order:', cancelResult.error);
+      }
+      dispatch({ type: 'SET_ORDER_ID', payload: null });
+      dispatch({ type: 'SET_SELECTED_VEHICLE', payload: null });
     }
 
     dispatch({ type: 'SET_IS_CREATING_ORDER', payload: true });
@@ -72,68 +86,87 @@ export function VehicleSelectionStep() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="outline" onClick={prevStep}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Search
-      </Button>
+      {/* Search Summary - Minimal header */}
+      {(searchDates || (vehicles && vehicles.length > 0)) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          {searchDates && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {new Date(searchDates.dateFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+              <span className="text-muted-foreground/60">→</span>
+              <span className="font-medium text-foreground">
+                {new Date(searchDates.dateTo).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+          )}
+          {vehicles && vehicles.length > 0 && (
+            <span className="text-xs font-medium text-muted-foreground">
+              {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} found
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* Order Creation Loading */}
+      {/* Order Creation Loading Overlay */}
       {isCreatingOrder && (
-        <div className="bg-card rounded-xl border shadow-sm p-8">
-          <div className="flex flex-col items-center justify-center gap-3">
-            <Loader2 className="animate-spin h-8 w-8 text-primary" />
-            <p className="text-muted-foreground">Creating your order...</p>
-          </div>
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+             <div className="bg-card rounded-xl border shadow-lg p-8 max-w-sm w-full mx-4">
+              <div className="flex flex-col items-center justify-center gap-4 text-center">
+                <div className="relative">
+                    <Loader2 className="animate-spin h-10 w-10 text-primary" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                         <Car className="w-4 h-4 text-primary/50" />
+                    </div>
+                </div>
+                <div>
+                    <h3 className="font-semibold text-lg">Booking Vehicle</h3>
+                    <p className="text-muted-foreground text-sm mt-1">Please wait while we prepare your order...</p>
+                </div>
+              </div>
+            </div>
         </div>
       )}
 
       {/* Error Message */}
       {orderError && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-          <p className="font-semibold mb-1">Order Creation Failed</p>
-          <p className="text-sm">{orderError}</p>
+        <div className="flex items-start gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-xl text-sm animate-in slide-in-from-top-2">
+          <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-1">
+             <span className="font-semibold text-destructive">Booking Failed</span>
+             <span className="text-destructive/80">{orderError}</span>
+          </div>
         </div>
       )}
 
       {/* No Vehicles Found */}
       {vehicles && vehicles.length === 0 && (
-        <div className="text-center py-12 bg-card rounded-xl border p-6">
-          <Car className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No Vehicles Available</h3>
-          <p className="text-muted-foreground">
-            No vehicles found for the selected dates. Try different dates or locations.
+        <div className="text-center py-16 bg-muted/20 rounded-2xl border border-dashed border-border/60">
+          <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+               <Car className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">No Vehicles Available</h3>
+          <p className="text-muted-foreground max-w-md mx-auto mb-6">
+            We couldn't find any vehicles matching your search criteria for these dates. 
+            Try adjusting your pickup or return dates.
           </p>
-          <Button variant="outline" onClick={prevStep} className="mt-4">
+          <Button onClick={prevStep} size="lg" className="shadow-sm">
             Modify Search
           </Button>
         </div>
       )}
 
       {/* Vehicle List */}
-      {vehicles && vehicles.length > 0 && !isCreatingOrder && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">
-              {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''} available
-            </h2>
-            {searchDates && (
-              <p className="text-sm text-muted-foreground">
-                {new Date(searchDates.dateFrom).toLocaleDateString()} -{' '}
-                {new Date(searchDates.dateTo).toLocaleDateString()}
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {vehicles.map((vehicle) => (
-              <VehicleCard
-                key={vehicle.id}
-                vehicle={vehicle}
-                onBook={handleBookVehicle}
-                isLoading={isCreatingOrder}
-              />
-            ))}
-          </div>
+      {vehicles && vehicles.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
+          {vehicles.map((vehicle) => (
+            <VehicleCard
+              key={vehicle.id}
+              vehicle={vehicle}
+              onBook={handleBookVehicle}
+              isLoading={isCreatingOrder}
+            />
+          ))}
         </div>
       )}
     </div>
