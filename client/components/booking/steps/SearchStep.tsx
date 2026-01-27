@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calendar, MapPin } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { searchCars, getLocations } from '@/app/actions';
 
@@ -25,10 +25,14 @@ export function SearchStep() {
     isSearching,
   } = state;
 
-  // Default dates
-  const defaultPickupDate = new Date('2026-02-16');
-  const defaultReturnDate = new Date('2026-02-17');
-  const formatDate = (date: Date) => date.toISOString().split('T')[0];
+  // Default dates - format for datetime-local input (YYYY-MM-DDTHH:MM)
+  const defaultPickupDateTime = '2026-02-16T09:15';
+  const defaultReturnDateTime = '2026-02-17T09:45';
+  const formatDateTime = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+  const getMinDateTime = () => formatDateTime(new Date());
 
   // Load locations on mount
   useEffect(() => {
@@ -50,20 +54,28 @@ export function SearchStep() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    // Get search dates
-    const dateFrom = formData.get('date_from') as string;
-    const timeFrom = formData.get('time_from') as string;
-    const dateTo = formData.get('date_to') as string;
-    const timeTo = formData.get('time_to') as string;
+    // Get search datetime values
+    const pickupDateTimeStr = formData.get('pickup_datetime') as string;
+    const returnDateTimeStr = formData.get('return_datetime') as string;
 
     // Validate dates
-    if (!dateFrom || !timeFrom || !dateTo || !timeTo) {
-      dispatch({ type: 'SET_SEARCH_ERROR', payload: 'Please fill in all date and time fields' });
+    if (!pickupDateTimeStr || !returnDateTimeStr) {
+      dispatch({ type: 'SET_SEARCH_ERROR', payload: 'Please fill in pickup and return date/time' });
       return;
     }
 
-    const pickupDateTime = new Date(`${dateFrom}T${timeFrom}`);
-    const returnDateTime = new Date(`${dateTo}T${timeTo}`);
+    // Parse datetime-local values (format: YYYY-MM-DDTHH:MM)
+    const [dateFrom, timeFrom] = pickupDateTimeStr.split('T');
+    const [dateTo, timeTo] = returnDateTimeStr.split('T');
+
+    const pickupDateTime = new Date(pickupDateTimeStr);
+    const returnDateTime = new Date(returnDateTimeStr);
+    
+    // Add hidden form fields for backend compatibility
+    formData.set('date_from', dateFrom);
+    formData.set('time_from', timeFrom);
+    formData.set('date_to', dateTo);
+    formData.set('time_to', timeTo);
 
     if (returnDateTime <= pickupDateTime) {
       dispatch({ type: 'SET_SEARCH_ERROR', payload: 'Return date must be after pickup date' });
@@ -124,47 +136,35 @@ export function SearchStep() {
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date_from">Pickup Date</Label>
+            <Label htmlFor="pickup_datetime">Pickup Date & Time</Label>
             <Input
-              type="date"
-              name="date_from"
-              id="date_from"
-              defaultValue={state.searchDates?.dateFrom || formatDate(defaultPickupDate)}
+              type="datetime-local"
+              name="pickup_datetime"
+              id="pickup_datetime"
+              defaultValue={
+                state.searchDates?.dateFrom && state.searchDates?.timeFrom
+                  ? `${state.searchDates.dateFrom}T${state.searchDates.timeFrom}`
+                  : defaultPickupDateTime
+              }
               required
-              min={formatDate(new Date())}
+              min={getMinDateTime()}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="time_from">Pickup Time</Label>
+            <Label htmlFor="return_datetime">Return Date & Time</Label>
             <Input
-              type="time"
-              name="time_from"
-              id="time_from"
-              defaultValue={state.searchDates?.timeFrom || '09:15'}
+              type="datetime-local"
+              name="return_datetime"
+              id="return_datetime"
+              defaultValue={
+                state.searchDates?.dateTo && state.searchDates?.timeTo
+                  ? `${state.searchDates.dateTo}T${state.searchDates.timeTo}`
+                  : defaultReturnDateTime
+              }
               required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="date_to">Return Date</Label>
-            <Input
-              type="date"
-              name="date_to"
-              id="date_to"
-              defaultValue={state.searchDates?.dateTo || formatDate(defaultReturnDate)}
-              required
-              min={formatDate(new Date())}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="time_to">Return Time</Label>
-            <Input
-              type="time"
-              name="time_to"
-              id="time_to"
-              defaultValue={state.searchDates?.timeTo || '09:45'}
-              required
+              min={getMinDateTime()}
             />
           </div>
         </div>
