@@ -48,12 +48,12 @@ function FloatingInput({
         disabled={disabled}
         className={`
           h-12 pt-2 
-          bg-slate-50/80 border-slate-200/80 
-          rounded-xl text-gray-800
-          placeholder:text-gray-400 placeholder:text-sm
-          focus:bg-white focus:border-blue-400
+          bg-card border-border 
+          rounded-xl text-foreground
+          placeholder:text-muted-foreground placeholder:text-sm
+          focus:bg-card focus:border-primary/50
           transition-all duration-200
-          ${error ? 'border-red-400 bg-red-50/50' : ''}
+          ${error ? 'border-destructive/50 bg-destructive/5' : ''}
         `}
       />
       {error && (
@@ -95,12 +95,12 @@ function FloatingSelect({
           id={id}
           className={`
             h-12 pt-2
-            bg-slate-50/80 border-slate-200/80
-            rounded-xl text-gray-800
-            focus:bg-white focus:border-blue-400
+            bg-card border-border
+            rounded-xl text-foreground
+            focus:bg-card focus:border-primary/50
             transition-all duration-200
-            ${error ? 'border-red-400 bg-red-50/50' : ''}
-            ${!value ? '[&>span]:text-gray-400 [&>span]:text-sm' : ''}
+            ${error ? 'border-destructive/50 bg-destructive/5' : ''}
+            ${!value ? '[&>span]:text-muted-foreground [&>span]:text-sm' : ''}
           `}
         >
           <SelectValue placeholder={placeholder || `${label}${required ? ' *' : ''}`} />
@@ -155,12 +155,12 @@ function FloatingDateInput({
           onClick={handlePlaceholderClick}
           className={`
             h-12 w-full px-3 flex items-center
-            bg-slate-50/80 border border-slate-200/80
-            rounded-xl text-gray-400 text-sm
+            bg-card border border-border
+            rounded-xl text-muted-foreground text-sm
             cursor-pointer
-            hover:border-blue-400 hover:bg-white
+            hover:border-primary/50 hover:bg-card
             transition-all duration-200
-            ${error ? 'border-red-400 bg-red-50/50' : ''}
+            ${error ? 'border-destructive/50 bg-destructive/5' : ''}
           `}
         >
           {label}{required ? ' *' : ''}
@@ -177,11 +177,11 @@ function FloatingDateInput({
           onBlur={() => setIsFocused(false)}
           className={`
             h-12
-            bg-slate-50/80 border-slate-200/80 
-            rounded-xl text-gray-800 text-sm
-            focus:bg-white focus:border-blue-400
+            bg-card border-border 
+            rounded-xl text-foreground text-sm
+            focus:bg-card focus:border-primary/50
             transition-all duration-200
-            ${error ? 'border-red-400 bg-red-50/50' : ''}
+            ${error ? 'border-destructive/50 bg-destructive/5' : ''}
           `}
         />
       )}
@@ -605,7 +605,7 @@ export function DriverDataStep() {
           return (
             <div
               key={driverIndex}
-              className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden"
+              className="bg-card rounded-2xl border border-border relative overflow-hidden"
             >
               {/* Remove Driver Button */}
               {driverIndex > 0 && (
@@ -621,8 +621,8 @@ export function DriverDataStep() {
               )}
 
               {/* Section Header */}
-              <div className="text-center py-4 border-b border-slate-100">
-                <h3 className="text-base font-semibold text-gray-800">
+              <div className="text-center py-4 border-b border-border/50">
+                <h3 className="text-base font-semibold text-foreground">
                   {driverIndex === 0 ? 'Head driver' : `Additional Driver ${driverIndex}`}
                 </h3>
               </div>
@@ -639,12 +639,12 @@ export function DriverDataStep() {
                         placeholder="Email *"
                         className={`
                           h-12 
-                          bg-slate-50/80 border-slate-200/80 
-                          rounded-xl text-gray-800
-                          placeholder:text-gray-400 placeholder:text-sm
-                          focus:bg-white focus:border-blue-400
+                          bg-card border-border 
+                          rounded-xl text-foreground
+                          placeholder:text-muted-foreground placeholder:text-sm
+                          focus:bg-card focus:border-primary/50
                           transition-all duration-200
-                          ${error ? 'border-red-400 bg-red-50/50' : ''}
+                          ${error ? 'border-destructive/50 bg-destructive/5' : ''}
                         `}
                       />
                     </div>
@@ -652,7 +652,7 @@ export function DriverDataStep() {
                       type="button"
                       onClick={() => handleSendPass(driverIndex)}
                       disabled={isLoading || !driver.email}
-                      className="h-12 px-6 rounded-xl bg-blue-500 hover:bg-blue-600 text-white"
+                      className="h-12 px-6 rounded-xl"
                     >
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Next'}
                     </Button>
@@ -663,7 +663,7 @@ export function DriverDataStep() {
                       {error}
                     </p>
                   )}
-                  <p className="text-center text-sm text-gray-500">
+                  <p className="text-center text-sm text-muted-foreground">
                     Please add your email to speed up the booking process
                   </p>
                 </div>
@@ -686,14 +686,14 @@ export function DriverDataStep() {
                         value={code}
                         onChange={(e) => setVerificationCodes(prev => new Map(prev).set(driverIndex, e.target.value))}
                         placeholder="Code"
-                        className="h-12 bg-slate-50/80 border-slate-200/80 rounded-xl text-gray-800 placeholder:text-gray-400"
+                        className="h-12 bg-card border-border rounded-xl text-foreground placeholder:text-muted-foreground"
                       />
                     </div>
                     <Button
                       type="button"
                       onClick={() => handleVerifyCode(driverIndex)}
                       disabled={isLoading || !code}
-                      className="h-12 px-6 rounded-xl bg-blue-500 hover:bg-blue-600 text-white"
+                      className="h-12 px-6 rounded-xl"
                     >
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
                     </Button>
@@ -705,16 +705,16 @@ export function DriverDataStep() {
                     </p>
                   )}
                   <div className="text-center space-y-1">
-                    <p className="text-sm text-gray-600">
-                      Code has been sent to e-mail: <span className="text-blue-500 font-medium">{driver.email}</span>
+                    <p className="text-sm text-muted-foreground">
+                      Code has been sent to e-mail: <span className="text-primary font-medium">{driver.email}</span>
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Code not received?{' '}
                       <button
                         type="button"
                         onClick={() => handleSendPass(driverIndex)}
                         disabled={isLoading}
-                        className="text-gray-700 underline hover:text-blue-500 border border-gray-300 px-2 py-0.5 rounded text-xs"
+                        className="text-foreground underline hover:text-primary border border-border px-2 py-0.5 rounded text-xs"
                       >
                         Try again
                       </button>
@@ -819,7 +819,7 @@ export function DriverDataStep() {
 
                   {/* Driver License Section */}
                   <div className="px-4 sm:px-5 pb-4 sm:pb-5">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-4">
+                    <h4 className="text-sm font-semibold text-foreground mb-4">
                       Driver license
                     </h4>
 
@@ -855,16 +855,16 @@ export function DriverDataStep() {
                     <div className="flex flex-wrap items-start gap-3 sm:gap-4">
                       <label
                         htmlFor={`driver_${driverIndex}_license_photo`}
-                        className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200"
+                        className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
                       >
                         {Object.keys(uploadingFiles).some((key) =>
                           key.startsWith(`${driverIndex}_`)
                         ) ? (
-                          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                          <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
                         ) : (
                           <>
-                            <Plus className="w-5 h-5 text-gray-400" />
-                            <span className="text-xs text-gray-400 mt-1">Upload</span>
+                            <Plus className="w-5 h-5 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground mt-1">Upload</span>
                           </>
                         )}
                         <Input
@@ -883,7 +883,7 @@ export function DriverDataStep() {
                           {uploadedFiles[driverIndex].map((file, fileIndex) => (
                             <div
                               key={`${driverIndex}_${fileIndex}`}
-                              className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 group"
+                              className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-border overflow-hidden bg-muted/30 group"
                             >
                               {file.url ? (
                                 <img
@@ -896,7 +896,7 @@ export function DriverDataStep() {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <ImageIcon className="w-6 h-6 text-gray-400" />
+                                  <ImageIcon className="w-6 h-6 text-muted-foreground" />
                                 </div>
                               )}
                               <button
@@ -931,7 +931,7 @@ export function DriverDataStep() {
         <button
           type="button"
           onClick={addDriver}
-          className="w-full py-4 border-2 border-dashed border-slate-300 rounded-2xl text-blue-500 font-medium hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200 flex items-center justify-center gap-2"
+          className="w-full py-4 border-2 border-dashed border-border rounded-2xl text-primary font-medium hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Add new driver
