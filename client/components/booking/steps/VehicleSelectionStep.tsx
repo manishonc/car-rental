@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { VehicleCard } from '@/components/VehicleCard';
-import { ArrowLeft, Loader2, Car } from 'lucide-react';
+import { ArrowLeft, Loader2, Car, AlertTriangle } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { createOrderAction } from '@/app/actions';
 import { Vehicle } from '@/lib/api/types';
@@ -90,9 +90,9 @@ export function VehicleSelectionStep() {
 
       {/* Error Message */}
       {orderError && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-          <p className="font-semibold mb-1">Order Creation Failed</p>
-          <p className="text-sm">{orderError}</p>
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span className="text-amber-800">{orderError}</span>
         </div>
       )}
 

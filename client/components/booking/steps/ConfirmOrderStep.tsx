@@ -11,6 +11,7 @@ import {
   Shield,
   CheckCircle2,
   MapPin,
+  AlertTriangle,
 } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { updateOrderAction, confirmOrderAction } from '@/app/actions';
@@ -343,9 +344,9 @@ export function ConfirmOrderStep() {
 
             {/* Error Messages */}
             {(confirmationError || localError) && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-                <p className="font-medium">Error</p>
-                <p className="text-sm">{confirmationError || localError}</p>
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span className="text-amber-800">{confirmationError || localError}</span>
               </div>
             )}
 
