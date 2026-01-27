@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, startTransition } from 'react';
+import { useEffect, startTransition, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Calendar, MapPin, AlertCircle, CarFront } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, CarFront, MapPin, Clock } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { searchCars, getLocations, cancelOrderAction } from '@/app/actions';
 
@@ -24,6 +25,10 @@ export function SearchStep() {
     searchError,
     isSearching,
   } = state;
+
+  // State for different drop-off location
+  const [differentDropLocation, setDifferentDropLocation] = useState(false);
+  const [dropLocation, setDropLocation] = useState('');
 
   // Default dates - format for datetime-local input (YYYY-MM-DDTHH:MM)
   const defaultPickupDateTime = '2026-02-16T09:15';
@@ -41,6 +46,7 @@ export function SearchStep() {
         dispatch({ type: 'SET_LOCATIONS', payload: locs });
         if (locs.length > 0) {
           dispatch({ type: 'SET_SELECTED_LOCATION', payload: locs[0].id.toString() });
+          setDropLocation(locs[0].id.toString());
         }
         dispatch({ type: 'SET_LOADING_LOCATIONS', payload: false });
       }).catch((error) => {
@@ -49,6 +55,13 @@ export function SearchStep() {
       });
     }
   }, [locations.length, loadingLocations, dispatch]);
+
+  // Sync drop location with pickup when switch is off
+  useEffect(() => {
+    if (!differentDropLocation) {
+      setDropLocation(selectedLocation);
+    }
+  }, [selectedLocation, differentDropLocation]);
 
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -89,10 +102,8 @@ export function SearchStep() {
 
       if (!cancelResult.success) {
         console.warn('[SearchStep] Failed to cancel existing order:', cancelResult.error);
-        // Continue anyway - don't block user from searching
       }
 
-      // Clear order ID from state
       dispatch({ type: 'SET_ORDER_ID', payload: null });
     }
 
@@ -136,103 +147,142 @@ export function SearchStep() {
     });
   };
 
-  const selectedLocationData = locations.find(
-    (loc) => loc.id.toString() === selectedLocation
-  );
-
   return (
-    <div className="bg-card rounded-xl border shadow-sm p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-2">Find Your Perfect Vehicle</h2>
-        <p className="text-muted-foreground">
-          Enter your pickup and return dates to see available vehicles
-        </p>
-      </div>
-
-      <form onSubmit={handleFormSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="pickup_datetime">Pickup Date & Time</Label>
-            <Input
-              type="datetime-local"
-              name="pickup_datetime"
-              id="pickup_datetime"
-              defaultValue={
-                state.searchDates?.dateFrom && state.searchDates?.timeFrom
-                  ? `${state.searchDates.dateFrom}T${state.searchDates.timeFrom}`
-                  : defaultPickupDateTime
-              }
-              required
-              min={getMinDateTime()}
-            />
+    <div className="p-4">
+      <form onSubmit={handleFormSubmit} className="space-y-4">
+        {/* Location Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <MapPin className="w-4 h-4" />
+            <span>Location</span>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="return_datetime">Return Date & Time</Label>
-            <Input
-              type="datetime-local"
-              name="return_datetime"
-              id="return_datetime"
-              defaultValue={
-                state.searchDates?.dateTo && state.searchDates?.timeTo
-                  ? `${state.searchDates.dateTo}T${state.searchDates.timeTo}`
-                  : defaultReturnDateTime
-              }
-              required
-              min={getMinDateTime()}
-            />
-          </div>
-        </div>
+          
+          <div className="space-y-3">
+            {/* Pickup Location */}
+            <div>
+              <Label htmlFor="pickup_location" className="text-xs text-muted-foreground mb-1 block">
+                Pickup
+              </Label>
+              {loadingLocations ? (
+                <div className="h-9 flex items-center px-3 rounded-md bg-muted/50 text-muted-foreground text-sm">
+                  <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                  Loading...
+                </div>
+              ) : (
+                <>
+                  <input type="hidden" name="pickup_location" value={selectedLocation} />
+                  <Select
+                    value={selectedLocation}
+                    onValueChange={(value) =>
+                      dispatch({ type: 'SET_SELECTED_LOCATION', payload: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full h-9 text-sm">
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id.toString()}>
+                          {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="pickup_location">Pickup Location</Label>
-            {loadingLocations ? (
-              <div className="h-10 flex items-center px-3 border rounded-md bg-muted text-muted-foreground text-sm">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Loading locations...
-              </div>
-            ) : (
-              <>
-                <input type="hidden" name="pickup_location" value={selectedLocation} />
+            {/* Different drop location toggle */}
+            <div className="flex items-center justify-between py-1">
+              <Label htmlFor="different-drop" className="text-sm cursor-pointer">
+                Different drop-off location
+              </Label>
+              <Switch
+                id="different-drop"
+                checked={differentDropLocation}
+                onCheckedChange={setDifferentDropLocation}
+              />
+            </div>
+
+            {/* Drop-off Location (conditional) */}
+            {differentDropLocation && (
+              <div>
+                <Label htmlFor="drop_location" className="text-xs text-muted-foreground mb-1 block">
+                  Drop-off
+                </Label>
                 <Select
-                  value={selectedLocation}
-                  onValueChange={(value) =>
-                    dispatch({ type: 'SET_SELECTED_LOCATION', payload: value })
-                  }
+                  value={dropLocation}
+                  onValueChange={setDropLocation}
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select location" />
+                  <SelectTrigger className="w-full h-9 text-sm">
+                    <SelectValue placeholder="Select drop-off location" />
                   </SelectTrigger>
                   <SelectContent>
                     {locations.map((loc) => (
                       <SelectItem key={loc.id} value={loc.id.toString()}>
-                        {loc.name} - {loc.address}
+                        {loc.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </>
+              </div>
             )}
           </div>
-          <div className="space-y-2">
-            <Label>Return Location</Label>
-            <div className="h-10 flex items-center px-3 border rounded-md bg-muted text-muted-foreground text-sm truncate">
-              {loadingLocations ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Loading...
-                </>
-              ) : selectedLocationData ? (
-                `${selectedLocationData.name} - ${selectedLocationData.address}`
-              ) : (
-                'Same as pickup location'
-              )}
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-border" />
+
+        {/* Date & Time Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Clock className="w-4 h-4" />
+            <span>Date & Time</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="pickup_datetime" className="text-xs text-muted-foreground mb-1 block">
+                Pickup
+              </Label>
+              <Input
+                type="datetime-local"
+                name="pickup_datetime"
+                id="pickup_datetime"
+                className="h-9 text-sm"
+                defaultValue={
+                  state.searchDates?.dateFrom && state.searchDates?.timeFrom
+                    ? `${state.searchDates.dateFrom}T${state.searchDates.timeFrom}`
+                    : defaultPickupDateTime
+                }
+                required
+                min={getMinDateTime()}
+              />
+            </div>
+            <div>
+              <Label htmlFor="return_datetime" className="text-xs text-muted-foreground mb-1 block">
+                Return
+              </Label>
+              <Input
+                type="datetime-local"
+                name="return_datetime"
+                id="return_datetime"
+                className="h-9 text-sm"
+                defaultValue={
+                  state.searchDates?.dateTo && state.searchDates?.timeTo
+                    ? `${state.searchDates.dateTo}T${state.searchDates.timeTo}`
+                    : defaultReturnDateTime
+                }
+                required
+                min={getMinDateTime()}
+              />
             </div>
           </div>
         </div>
 
+        {/* Error message */}
         {searchError && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-md text-sm">
             <CarFront className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <span className="text-amber-800">
               {searchError.includes('No vehicles') 
@@ -242,17 +292,15 @@ export function SearchStep() {
           </div>
         )}
 
-        <div className="flex justify-center pt-2">
-          <Button
-            type="submit"
-            disabled={isSearching || loadingLocations}
-            size="lg"
-            className="min-w-[200px]"
-          >
-            {isSearching && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-            {isSearching ? 'Searching...' : 'Search Available Cars'}
-          </Button>
-        </div>
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          disabled={isSearching || loadingLocations}
+          className="w-full h-10"
+        >
+          {isSearching && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+          {isSearching ? 'Searching...' : 'Search Available Cars'}
+        </Button>
       </form>
     </div>
   );
