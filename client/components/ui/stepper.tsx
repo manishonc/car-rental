@@ -96,43 +96,21 @@ export function Stepper({
 
       {/* Mobile Stepper */}
       <div className="md:hidden">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center",
-              "bg-primary text-primary-foreground font-bold text-sm"
-            )}>
-              {currentStep}
-            </div>
-            <div>
-              <p className="font-medium text-sm">{steps[currentStep - 1]?.label}</p>
-              <p className="text-xs text-muted-foreground">
-                Step {currentStep} of {steps.length}
-              </p>
-            </div>
-          </div>
-          {currentStep < steps.length && (
-            <div className="flex items-center gap-1 text-muted-foreground text-sm">
-              <span>Next: {steps[currentStep]?.label}</span>
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          )}
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        {/* Compact Progress Bar */}
+        <div className="h-1 bg-muted rounded-full overflow-hidden mb-3">
           <div 
             className="h-full bg-primary transition-all duration-300 rounded-full"
-            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+            style={{ width: `${(currentStep / steps.length) * 100}%` }}
           />
         </div>
 
-        {/* Step Indicators */}
-        <div className="flex justify-between mt-2">
+        {/* Horizontal Scrollable Step Pills */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
           {steps.map((step, index) => {
             const stepNumber = index + 1
             const isCompleted = stepNumber <= maxCompletedStep
             const isActive = stepNumber === currentStep
+            const isPending = stepNumber > currentStep && stepNumber > maxCompletedStep + 1
             const isClickable = (stepNumber <= currentStep || stepNumber <= maxCompletedStep + 1) && onStepClick
 
             return (
@@ -142,14 +120,31 @@ export function Stepper({
                 onClick={() => isClickable && onStepClick(stepNumber)}
                 disabled={!isClickable}
                 className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  isActive && "w-4 bg-primary",
-                  isCompleted && !isActive && "bg-primary",
-                  !isCompleted && !isActive && "bg-muted-foreground/30",
-                  isClickable && "cursor-pointer"
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  isActive && "bg-primary text-primary-foreground shadow-sm",
+                  isCompleted && !isActive && "bg-primary/15 text-primary",
+                  isPending && "bg-muted text-muted-foreground",
+                  !isCompleted && !isActive && !isPending && "bg-muted text-foreground",
+                  isClickable && !isActive && "hover:bg-primary/20 active:scale-95",
+                  !isClickable && "cursor-default opacity-60"
                 )}
-                aria-label={`Go to step ${stepNumber}: ${step.label}`}
-              />
+                aria-label={`Step ${stepNumber}: ${step.label}`}
+                aria-current={isActive ? 'step' : undefined}
+              >
+                <span className={cn(
+                  "w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold",
+                  isActive && "bg-primary-foreground/20",
+                  isCompleted && !isActive && "bg-primary/20",
+                  !isCompleted && !isActive && "bg-muted-foreground/20"
+                )}>
+                  {isCompleted && !isActive ? (
+                    <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                  ) : (
+                    stepNumber
+                  )}
+                </span>
+                <span>{step.label}</span>
+              </button>
             )
           })}
         </div>

@@ -45,7 +45,7 @@ export function VehicleCard({ vehicle, onBook, isLoading }: VehicleCardProps) {
   ].filter(Boolean) as { icon: React.ComponentType<{ className?: string }>; label: string }[];
 
   return (
-    <Card className="group overflow-hidden border-border/40 hover:border-primary/40 transition-all duration-300 hover:shadow-xl rounded-2xl bg-card">
+    <Card className="group overflow-hidden border border-border hover:border-primary/40 transition-all duration-300 rounded-2xl bg-card">
       {/* Image Section */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-muted/30 to-muted/60">
         {vehicle.thumbnail ? (
@@ -105,7 +105,7 @@ export function VehicleCard({ vehicle, onBook, isLoading }: VehicleCardProps) {
       )}
 
       {/* Price & Action */}
-      <CardFooter className="p-4 pt-3 border-t border-border/30 bg-muted/5">
+      <CardFooter className="p-4 pt-3 border-t border-border/20 bg-muted/5">
         <div className="flex flex-col w-full gap-3">
           <div className="flex items-end justify-between w-full">
             <div>
@@ -128,7 +128,7 @@ export function VehicleCard({ vehicle, onBook, isLoading }: VehicleCardProps) {
           {onBook && (
             <Button 
               onClick={() => onBook(vehicle)} 
-              className="w-full h-11 text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all" 
+              className="w-full h-11 text-sm font-semibold rounded-xl transition-all" 
               size="lg"
               disabled={isLoading}
             >
