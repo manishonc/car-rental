@@ -1,4 +1,4 @@
-import { AuthResponse, CompanySettings, SearchParams, SearchResponse, CreateOrderParams, CreateOrderResponse, ConfirmOrderParams, ConfirmOrderResponse, FileUploadResponse, UpdateOrderParams, UpdateOrderResponse, CancelOrderResponse, Country } from './types';
+import { AuthResponse, CompanySettings, SearchParams, SearchResponse, CreateOrderParams, CreateOrderResponse, ConfirmOrderParams, ConfirmOrderResponse, FileUploadResponse, UpdateOrderParams, UpdateOrderResponse, CancelOrderResponse, Country, SendPassResponse, VerifyContactResponse } from './types';
 import { getStoredToken, storeToken, getFallbackToken } from './token-store';
 
 // In-memory cache for current process
@@ -551,5 +551,59 @@ export async function getCountries(lang: string = 'EN'): Promise<Country[]> {
     responseTime: `${responseTime}ms`,
   });
 
+  return data;
+}
+
+export async function sendPass(email: string): Promise<SendPassResponse> {
+  const token = await getAccessToken();
+  const apiUrl = process.env.RENTSYST_API_URL;
+
+  if (!apiUrl) {
+    throw new Error('Missing RENTSYST_API_URL');
+  }
+
+  const url = `${apiUrl}/contact/send-pass?email=${encodeURIComponent(email)}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unable to read error response');
+    throw new Error(`Send pass failed: ${response.status}`);
+  }
+
+  const data: SendPassResponse = await response.json();
+  return data;
+}
+
+export async function verifyContact(email: string, code: string): Promise<VerifyContactResponse> {
+  const token = await getAccessToken();
+  const apiUrl = process.env.RENTSYST_API_URL;
+
+  if (!apiUrl) {
+    throw new Error('Missing RENTSYST_API_URL');
+  }
+
+  const url = `${apiUrl}/contact?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unable to read error response');
+    throw new Error(`Contact verification failed: ${response.status}`);
+  }
+
+  const data: VerifyContactResponse = await response.json();
   return data;
 }

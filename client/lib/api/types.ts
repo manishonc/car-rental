@@ -189,3 +189,27 @@ export interface Country {
   id: string;
   iso_code: string;
 }
+
+export interface SendPassResponse {
+  status: string;
+  send: boolean;
+}
+
+export interface ContactDriver {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  country: string;
+  country_id: string;
+  city: string;
+  address: string;
+  birthday: string;
+  documents: unknown[];
+}
+
+export interface VerifyContactResponse {
+  status: string;
+  driver: ContactDriver;
+}

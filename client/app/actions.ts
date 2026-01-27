@@ -1,7 +1,7 @@
 'use server';
 
-import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder, getCountries, cancelOrder } from '@/lib/api/rentsyst';
-import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, Country, CancelOrderResponse } from '@/lib/api/types';
+import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder, getCountries, cancelOrder, sendPass, verifyContact } from '@/lib/api/rentsyst';
+import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, Country, CancelOrderResponse, ContactDriver } from '@/lib/api/types';
 
 export interface SearchFormState {
   vehicles: SearchResponse['vehicles'] | null;
@@ -198,5 +198,47 @@ export async function getCountriesAction(): Promise<Country[]> {
   } catch (err) {
     console.error('Failed to fetch countries:', err);
     return [];
+  }
+}
+
+export interface SendPassResult {
+  send: boolean;
+  error: string | null;
+}
+
+export async function sendPassAction(email: string): Promise<SendPassResult> {
+  try {
+    const response = await sendPass(email);
+    return {
+      send: response.send,
+      error: null,
+    };
+  } catch (err) {
+    console.error('Send pass error:', err);
+    return {
+      send: false,
+      error: err instanceof Error ? err.message : 'Failed to send verification code',
+    };
+  }
+}
+
+export interface VerifyContactResult {
+  driver: ContactDriver | null;
+  error: string | null;
+}
+
+export async function verifyContactAction(email: string, code: string): Promise<VerifyContactResult> {
+  try {
+    const response = await verifyContact(email, code);
+    return {
+      driver: response.driver,
+      error: null,
+    };
+  } catch (err) {
+    console.error('Verify contact error:', err);
+    return {
+      driver: null,
+      error: err instanceof Error ? err.message : 'Verification failed',
+    };
   }
 }
