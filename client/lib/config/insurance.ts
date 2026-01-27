@@ -8,6 +8,11 @@ export interface InsuranceEligibilityCriteria {
   requiresValidLicense?: boolean; // Whether valid license is required (default: true)
 }
 
+export interface CoverageDetail {
+  text: string;
+  included: boolean;
+}
+
 export interface InsuranceOption {
   id: number;
   title: string;
@@ -23,6 +28,8 @@ export interface InsuranceOption {
   checked?: boolean;
   eligibilityCriteria?: InsuranceEligibilityCriteria; // Eligibility rules for this insurance
   isFallback?: boolean; // Mark as fallback option if no others match
+  highlights?: string[]; // Key benefits shown on mobile
+  coverageDetails?: CoverageDetail[]; // Full coverage details for expandable section
 }
 
 // EU country codes for eligibility checks
@@ -50,7 +57,22 @@ export const insuranceOptions: InsuranceOption[] = [
       minAge: 18,
       requiresValidLicense: true,
     },
-    isFallback: true, // Fallback option if no others match
+    isFallback: true,
+    highlights: [
+      'Third party liability',
+      'Collision damage waiver',
+      '250 CHF excess',
+    ],
+    coverageDetails: [
+      { text: 'Third party liability up to 1M CHF', included: true },
+      { text: 'Collision damage waiver (CDW)', included: true },
+      { text: 'Fire and theft protection', included: true },
+      { text: '24/7 roadside assistance', included: true },
+      { text: 'Windscreen & glass damage', included: false },
+      { text: 'Tire & rim damage', included: false },
+      { text: 'Personal accident insurance', included: false },
+      { text: 'Zero excess option', included: false },
+    ],
   },
   {
     id: 1002,
@@ -66,15 +88,30 @@ export const insuranceOptions: InsuranceOption[] = [
     damage_access: '300.00',
     checked: false,
     eligibilityCriteria: {
-      maxAge: 24, // Age < 25
-      maxTenure: 2.99, // Tenure < 3 years
+      maxAge: 24,
+      maxTenure: 2.99,
       allowedCountries: EU_COUNTRIES,
       requiresValidLicense: true,
     },
+    highlights: [
+      'Under 25 specialist',
+      'Enhanced protection',
+      '300 CHF excess',
+    ],
+    coverageDetails: [
+      { text: 'Third party liability up to 1M CHF', included: true },
+      { text: 'Collision damage waiver (CDW)', included: true },
+      { text: 'Fire and theft protection', included: true },
+      { text: '24/7 roadside assistance', included: true },
+      { text: 'Young driver surcharge included', included: true },
+      { text: 'Windscreen & glass damage', included: false },
+      { text: 'Tire & rim damage', included: false },
+      { text: 'Zero excess option', included: false },
+    ],
   },
   {
     id: 1003,
-    title: 'Experienced Driver Coverage',
+    title: 'Premium Coverage',
     type: 'Fix',
     value: '100.00',
     price: '100.00',
@@ -88,9 +125,24 @@ export const insuranceOptions: InsuranceOption[] = [
     eligibilityCriteria: {
       minAge: 25,
       maxAge: 65,
-      minTenure: 3, // Tenure >= 3 years
+      minTenure: 3,
       requiresValidLicense: true,
     },
+    highlights: [
+      'Zero excess',
+      'Full protection',
+      'No deposit required',
+    ],
+    coverageDetails: [
+      { text: 'Third party liability up to 2M CHF', included: true },
+      { text: 'Collision damage waiver (CDW)', included: true },
+      { text: 'Fire and theft protection', included: true },
+      { text: '24/7 roadside assistance', included: true },
+      { text: 'Windscreen & glass damage', included: true },
+      { text: 'Tire & rim damage', included: true },
+      { text: 'Personal accident insurance', included: true },
+      { text: 'Zero excess - no deductible', included: true },
+    ],
   },
   {
     id: 1004,
@@ -106,15 +158,30 @@ export const insuranceOptions: InsuranceOption[] = [
     damage_access: '350.00',
     checked: false,
     eligibilityCriteria: {
-      minAge: 66, // Age > 65
-      minTenure: 5, // Tenure >= 5 years
+      minAge: 66,
+      minTenure: 5,
       allowedCountries: EU_COUNTRIES,
       requiresValidLicense: true,
     },
+    highlights: [
+      'Age 65+ specialist',
+      'Enhanced support',
+      '350 CHF excess',
+    ],
+    coverageDetails: [
+      { text: 'Third party liability up to 1M CHF', included: true },
+      { text: 'Collision damage waiver (CDW)', included: true },
+      { text: 'Fire and theft protection', included: true },
+      { text: '24/7 roadside assistance', included: true },
+      { text: 'Personal accident insurance', included: true },
+      { text: 'Windscreen & glass damage', included: false },
+      { text: 'Tire & rim damage', included: false },
+      { text: 'Zero excess option', included: false },
+    ],
   },
   {
     id: 1005,
-    title: 'High Risk Coverage',
+    title: 'Comprehensive Coverage',
     type: 'Fix',
     value: '150.00',
     price: '150.00',
@@ -126,10 +193,25 @@ export const insuranceOptions: InsuranceOption[] = [
     damage_access: '500.00',
     checked: false,
     eligibilityCriteria: {
-      maxAge: 24, // Age < 25
-      maxTenure: 0.99, // Tenure < 1 year
+      maxAge: 24,
+      maxTenure: 0.99,
       requiresValidLicense: true,
     },
+    highlights: [
+      'Maximum protection',
+      'All-inclusive cover',
+      '500 CHF excess',
+    ],
+    coverageDetails: [
+      { text: 'Third party liability up to 2M CHF', included: true },
+      { text: 'Collision damage waiver (CDW)', included: true },
+      { text: 'Fire and theft protection', included: true },
+      { text: '24/7 roadside assistance', included: true },
+      { text: 'Windscreen & glass damage', included: true },
+      { text: 'Tire & rim damage', included: true },
+      { text: 'Personal accident insurance', included: true },
+      { text: 'New driver protection', included: true },
+    ],
   },
   {
     id: 1006,
@@ -149,5 +231,20 @@ export const insuranceOptions: InsuranceOption[] = [
       maxAge: 65,
       requiresValidLicense: true,
     },
+    highlights: [
+      'No deposit',
+      'Essential protection',
+      'Best value',
+    ],
+    coverageDetails: [
+      { text: 'Third party liability up to 1M CHF', included: true },
+      { text: 'Collision damage waiver (CDW)', included: true },
+      { text: 'Fire and theft protection', included: true },
+      { text: '24/7 roadside assistance', included: true },
+      { text: 'Windscreen & glass damage', included: false },
+      { text: 'Tire & rim damage', included: false },
+      { text: 'Personal accident insurance', included: false },
+      { text: 'Zero excess option', included: false },
+    ],
   },
 ];
