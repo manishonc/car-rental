@@ -106,12 +106,22 @@ export function ConfirmOrderStep() {
           payload: confirmResult.error || 'Failed to confirm order',
         });
       } else {
+        console.log('[ConfirmOrderStep] Confirmation result:', {
+          paymentMethod,
+          hasData: !!confirmResult.data,
+          data: confirmResult.data,
+          paymentId: confirmResult.data?.payment_id,
+        });
+        
         // Handle payment redirect for card payments
         if (paymentMethod === 'card' && confirmResult.data?.payment_id) {
           // Redirect to payment page
-          window.location.href = `https://pay.rentsyst.com/?payment_id=${confirmResult.data.payment_id}`;
+          const paymentUrl = `https://pay.rentsyst.com/?payment_id=${confirmResult.data.payment_id}`;
+          console.log('[ConfirmOrderStep] Redirecting to payment:', paymentUrl);
+          window.location.href = paymentUrl;
           return; // Don't show success state, redirect happens
         } else if (paymentMethod === 'card' && !confirmResult.data?.payment_id) {
+          console.error('[ConfirmOrderStep] Card payment selected but no payment_id in response:', confirmResult.data);
           dispatch({
             type: 'SET_CONFIRMATION_ERROR',
             payload: 'Payment ID not received. Please contact support.',

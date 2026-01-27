@@ -391,6 +391,7 @@ export async function confirmOrder(orderId: string, params: ConfirmOrderParams):
   console.log('[API] confirmOrder: Success', {
     orderId,
     responseTime: `${responseTime}ms`,
+    responseData: data,
   });
 
   return data;

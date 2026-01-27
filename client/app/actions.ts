@@ -153,11 +153,19 @@ export async function confirmOrderAction(
   paymentMethod: string = 'card'
 ): Promise<ConfirmOrderResult> {
   try {
+    // Map payment method to API expected format: 'card' -> 'Card', 'cash' -> 'Cash'
+    const apiPaymentMethod = paymentMethod === 'card' ? 'Card' : 'Cash';
+    
     const params: ConfirmOrderParams = {
       drivers,
-      payment_method: paymentMethod,
+      payment_method: apiPaymentMethod,
     };
     const response = await confirmOrder(orderId, params);
+    console.log('[Action] confirmOrderAction: Response received', {
+      paymentMethod,
+      apiPaymentMethod,
+      responseData: response,
+    });
     return {
       success: true,
       error: null,
