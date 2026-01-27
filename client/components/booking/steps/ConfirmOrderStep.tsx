@@ -32,6 +32,7 @@ export function ConfirmOrderStep() {
     isConfirmingOrder,
     confirmationError,
     orderConfirmed,
+    paymentMethod,
   } = state;
 
   const [localError, setLocalError] = useState<string | null>(null);
@@ -90,13 +91,13 @@ export function ConfirmOrderStep() {
 
       // Then, confirm the order with retry logic
       dispatch({ type: 'SET_IS_CONFIRMING_ORDER', payload: true });
-      let confirmResult = await confirmOrderAction(orderId, drivers, 'card');
+      let confirmResult = await confirmOrderAction(orderId, drivers, paymentMethod);
 
       // Retry once if confirmation fails
       if (!confirmResult.success) {
         console.log('Confirm order failed, retrying...');
         await new Promise(resolve => setTimeout(resolve, 1000));
-        confirmResult = await confirmOrderAction(orderId, drivers, 'card');
+        confirmResult = await confirmOrderAction(orderId, drivers, paymentMethod);
       }
 
       if (!confirmResult.success) {
@@ -105,8 +106,31 @@ export function ConfirmOrderStep() {
           payload: confirmResult.error || 'Failed to confirm order',
         });
       } else {
-        dispatch({ type: 'SET_ORDER_CONFIRMED', payload: true });
-        dispatch({ type: 'SET_MAX_COMPLETED_STEP', payload: 5 });
+        console.log('[ConfirmOrderStep] Confirmation result:', {
+          paymentMethod,
+          hasData: !!confirmResult.data,
+          data: confirmResult.data,
+          paymentId: confirmResult.data?.payment_id,
+        });
+        
+        // Handle payment redirect for card payments
+        if (paymentMethod === 'card' && confirmResult.data?.payment_id) {
+          // Redirect to payment page
+          const paymentUrl = `https://pay.rentsyst.com/?payment_id=${confirmResult.data.payment_id}`;
+          console.log('[ConfirmOrderStep] Redirecting to payment:', paymentUrl);
+          window.location.href = paymentUrl;
+          return; // Don't show success state, redirect happens
+        } else if (paymentMethod === 'card' && !confirmResult.data?.payment_id) {
+          console.error('[ConfirmOrderStep] Card payment selected but no payment_id in response:', confirmResult.data);
+          dispatch({
+            type: 'SET_CONFIRMATION_ERROR',
+            payload: 'Payment ID not received. Please contact support.',
+          });
+        } else {
+          // Cash payment - show success message
+          dispatch({ type: 'SET_ORDER_CONFIRMED', payload: true });
+          dispatch({ type: 'SET_MAX_COMPLETED_STEP', payload: 5 });
+        }
       }
     } catch (error) {
       console.error('Order confirmation error:', error);
@@ -312,6 +336,39 @@ export function ConfirmOrderStep() {
             </div>
           </div>
 
+          {/* Payment Method Selection */}
+          <div className="border-b pb-4">
+            <h3 className="font-semibold mb-3">Payment Method</h3>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="card"
+                  checked={paymentMethod === 'card'}
+                  onChange={(e) =>
+                    dispatch({ type: 'SET_PAYMENT_METHOD', payload: 'card' })
+                  }
+                  className="w-4 h-4 text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium">Card Payment</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cash"
+                  checked={paymentMethod === 'cash'}
+                  onChange={(e) =>
+                    dispatch({ type: 'SET_PAYMENT_METHOD', payload: 'cash' })
+                  }
+                  className="w-4 h-4 text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium">Cash Payment</span>
+              </label>
+            </div>
+          </div>
+
           {/* Terms & Conditions */}
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -358,12 +415,21 @@ export function ConfirmOrderStep() {
                 ? 'Updating Order...'
                 : isConfirmingOrder
                 ? 'Confirming...'
-                : `Confirm & Pay ${totalPrice.toFixed(2)} ${currency}`}
+                : paymentMethod === 'card'
+                ? `Confirm & Pay ${totalPrice.toFixed(2)} ${currency}`
+                : `Confirm Booking ${totalPrice.toFixed(2)} ${currency}`}
             </Button>
 
-            <p className="text-xs text-center text-muted-foreground">
-              You will be redirected to complete the payment
-            </p>
+            {paymentMethod === 'card' && (
+              <p className="text-xs text-center text-muted-foreground">
+                You will be redirected to complete the payment
+              </p>
+            )}
+            {paymentMethod === 'cash' && (
+              <p className="text-xs text-center text-muted-foreground">
+                You will pay in cash upon vehicle pickup
+              </p>
+            )}
           </div>
         </div>
       </div>

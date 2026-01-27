@@ -148,7 +148,10 @@ export interface ConfirmOrderParams {
 }
 
 export interface ConfirmOrderResponse {
-  [key: string]: any; // Response structure may vary
+  payment_link: string;
+  status: string;
+  payment_id: string;
+  unique_number: string;
 }
 
 export interface FileUploadResponse {
@@ -188,4 +191,28 @@ export interface Country {
   name: string;
   id: string;
   iso_code: string;
+}
+
+export interface SendPassResponse {
+  status: string;
+  send: boolean;
+}
+
+export interface ContactDriver {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  country: string;
+  country_id: string;
+  city: string;
+  address: string;
+  birthday: string;
+  documents: unknown[];
+}
+
+export interface VerifyContactResponse {
+  status: string;
+  driver: ContactDriver;
 }

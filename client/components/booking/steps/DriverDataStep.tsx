@@ -4,14 +4,16 @@ import React, { useState, useEffect, startTransition, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, X, Trash2, Loader2, ImageIcon, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, X, Trash2, Loader2, ImageIcon, AlertCircle, Check } from 'lucide-react';
 import { useBooking } from '../BookingContext';
-import { uploadFileAction, getCountriesAction } from '@/app/actions';
-import { Driver, Country } from '@/lib/api/types';
+import { uploadFileAction, getCountriesAction, sendPassAction, verifyContactAction } from '@/app/actions';
+import { Driver, Country, ContactDriver } from '@/lib/api/types';
 
 interface ValidationErrors {
   [key: string]: string;
 }
+
+type VerificationStep = 'email' | 'code' | 'form';
 
 // Compact floating label input component
 function FloatingInput({
@@ -115,59 +117,6 @@ function FloatingSelect({
   );
 }
 
-// Email input with clear button
-function EmailInput({
-  id,
-  value,
-  onChange,
-  error,
-  required = false,
-}: {
-  id: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-  required?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Input
-          type="email"
-          id={id}
-          value={value}
-          onChange={onChange}
-          placeholder={`Email${required ? ' *' : ''}`}
-          className={`
-            h-12 pt-2 pr-10
-            bg-blue-50/50 border-blue-200/50
-            rounded-xl text-gray-800
-            placeholder:text-gray-400 placeholder:text-sm
-            focus:bg-white focus:border-blue-400
-            transition-all duration-200
-            ${error ? 'border-red-400 bg-red-50/50' : ''}
-          `}
-        />
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-300 hover:bg-gray-400 flex items-center justify-center transition-colors"
-          >
-            <X className="w-3 h-3 text-white" />
-          </button>
-        )}
-      </div>
-      {error && (
-        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 // Date input with label (for date inputs that don't support placeholders)
 function FloatingDateInput({
   id,
@@ -246,6 +195,69 @@ function FloatingDateInput({
   );
 }
 
+// Email verification input component
+function EmailVerificationInput({
+  email,
+  onEmailChange,
+  onClear,
+  verified,
+  error,
+}: {
+  email: string;
+  onEmailChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+  verified: boolean;
+  error?: string;
+}) {
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Input
+          type="email"
+          value={email}
+          onChange={onEmailChange}
+          placeholder="Email *"
+          disabled={verified}
+          className={`
+            h-12 pt-2 pr-10
+            ${verified 
+              ? 'bg-blue-50/80 border-blue-300 text-gray-800' 
+              : 'bg-slate-50/80 border-slate-200/80 text-gray-800'}
+            rounded-xl
+            placeholder:text-gray-400 placeholder:text-sm
+            focus:bg-white focus:border-blue-400
+            transition-all duration-200
+            ${error ? 'border-red-400 bg-red-50/50' : ''}
+          `}
+        />
+        {email && (
+          <button
+            type="button"
+            onClick={onClear}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+              verified 
+                ? 'bg-green-500 text-white' 
+                : 'bg-gray-300 hover:bg-gray-400'
+            }`}
+          >
+            {verified ? (
+              <Check className="w-3 h-3 text-white" />
+            ) : (
+              <X className="w-3 h-3 text-white" />
+            )}
+          </button>
+        )}
+      </div>
+      {error && (
+        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function DriverDataStep() {
   const { state, dispatch, prevStep, nextStep } = useBooking();
   const {
@@ -259,6 +271,15 @@ export function DriverDataStep() {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [countries, setCountries] = useState<Country[]>([]);
   const [loadingCountries, setLoadingCountries] = useState(true);
+
+  // Email verification state for each driver
+  const [verificationSteps, setVerificationSteps] = useState<Map<number, VerificationStep>>(
+    new Map([[0, 'email']])
+  );
+  const [verificationCodes, setVerificationCodes] = useState<Map<number, string>>(new Map());
+  const [isVerifying, setIsVerifying] = useState<Map<number, boolean>>(new Map());
+  const [verificationErrors, setVerificationErrors] = useState<Map<number, string>>(new Map());
+  const [codeSent, setCodeSent] = useState<Map<number, boolean>>(new Map());
 
   useEffect(() => {
     const fetchCountries = async () => {
@@ -295,10 +316,116 @@ export function DriverDataStep() {
 
   const addDriver = () => {
     dispatch({ type: 'ADD_DRIVER' });
+    // Set initial verification step for new driver
+    setVerificationSteps(prev => new Map(prev).set(drivers.length, 'email'));
   };
 
   const removeDriver = (index: number) => {
     dispatch({ type: 'REMOVE_DRIVER', payload: index });
+  };
+
+  // Handle email verification - Step 1: Send pass
+  const handleSendPass = async (driverIndex: number) => {
+    const email = drivers[driverIndex].email;
+    
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setVerificationErrors(prev => new Map(prev).set(driverIndex, 'Please enter a valid email'));
+      return;
+    }
+
+    setIsVerifying(prev => new Map(prev).set(driverIndex, true));
+    setVerificationErrors(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(driverIndex);
+      return newMap;
+    });
+
+    try {
+      const result = await sendPassAction(email);
+      
+      if (result.error) {
+        setVerificationErrors(prev => new Map(prev).set(driverIndex, result.error!));
+        return;
+      }
+
+      if (result.send) {
+        // User exists, show code input
+        setCodeSent(prev => new Map(prev).set(driverIndex, true));
+        setVerificationSteps(prev => new Map(prev).set(driverIndex, 'code'));
+      } else {
+        // User doesn't exist, show full form
+        setVerificationSteps(prev => new Map(prev).set(driverIndex, 'form'));
+      }
+    } catch (error) {
+      setVerificationErrors(prev => new Map(prev).set(driverIndex, 'Failed to verify email'));
+    } finally {
+      setIsVerifying(prev => new Map(prev).set(driverIndex, false));
+    }
+  };
+
+  // Handle email verification - Step 2: Verify code
+  const handleVerifyCode = async (driverIndex: number) => {
+    const email = drivers[driverIndex].email;
+    const code = verificationCodes.get(driverIndex) || '';
+
+    if (!code.trim()) {
+      setVerificationErrors(prev => new Map(prev).set(driverIndex, 'Please enter the verification code'));
+      return;
+    }
+
+    setIsVerifying(prev => new Map(prev).set(driverIndex, true));
+    setVerificationErrors(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(driverIndex);
+      return newMap;
+    });
+
+    try {
+      const result = await verifyContactAction(email, code);
+      
+      if (result.error || !result.driver) {
+        setVerificationErrors(prev => new Map(prev).set(driverIndex, result.error || 'Verification failed'));
+        return;
+      }
+
+      // Prefill driver data from verified contact
+      const contactDriver = result.driver;
+      updateDriver(driverIndex, 'first_name', contactDriver.first_name || '');
+      updateDriver(driverIndex, 'last_name', contactDriver.last_name || '');
+      updateDriver(driverIndex, 'phone', contactDriver.phone || '');
+      updateDriver(driverIndex, 'country', contactDriver.country_id || '');
+      updateDriver(driverIndex, 'city', contactDriver.city || '');
+      updateDriver(driverIndex, 'address', contactDriver.address || '');
+      updateDriver(driverIndex, 'birthday', contactDriver.birthday || '');
+
+      // Move to form step
+      setVerificationSteps(prev => new Map(prev).set(driverIndex, 'form'));
+    } catch (error) {
+      setVerificationErrors(prev => new Map(prev).set(driverIndex, 'Verification failed'));
+    } finally {
+      setIsVerifying(prev => new Map(prev).set(driverIndex, false));
+    }
+  };
+
+  // Reset email verification
+  const handleResetEmail = (driverIndex: number) => {
+    updateDriver(driverIndex, 'email', '');
+    setVerificationSteps(prev => new Map(prev).set(driverIndex, 'email'));
+    setVerificationCodes(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(driverIndex);
+      return newMap;
+    });
+    setCodeSent(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(driverIndex);
+      return newMap;
+    });
+    setVerificationErrors(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(driverIndex);
+      return newMap;
+    });
   };
 
   const handleFileUpload = async (driverIndex: number, files: FileList | null) => {
@@ -387,6 +514,14 @@ export function DriverDataStep() {
     let isValid = true;
 
     drivers.forEach((driver, index) => {
+      // Check if driver is in form step
+      const step = verificationSteps.get(index) || 'email';
+      if (step !== 'form') {
+        errors[`${index}_verification`] = 'Please complete email verification';
+        isValid = false;
+        return;
+      }
+
       const requiredFields: (keyof Driver)[] = [
         'first_name',
         'last_name',
@@ -460,229 +595,338 @@ export function DriverDataStep() {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {drivers.map((driver, driverIndex) => (
-          <div
-            key={driverIndex}
-            className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden"
-          >
-            {/* Remove Driver Button */}
-            {driverIndex > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute top-4 right-4 z-10"
-                onClick={() => removeDriver(driverIndex)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            )}
+        {drivers.map((driver, driverIndex) => {
+          const currentStep = verificationSteps.get(driverIndex) || 'email';
+          const isLoading = isVerifying.get(driverIndex) || false;
+          const error = verificationErrors.get(driverIndex);
+          const code = verificationCodes.get(driverIndex) || '';
+          const hasSentCode = codeSent.get(driverIndex) || false;
 
-            {/* Section Header */}
-            <div className="text-center py-4 border-b border-slate-100">
-              <h3 className="text-base font-semibold text-gray-800">
-                {driverIndex === 0 ? 'Head driver' : `Additional Driver ${driverIndex}`}
-              </h3>
-            </div>
-
-            {/* Personal Information */}
-            <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
-              {/* Row 1: First Name, Second Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <FloatingInput
-                  id={`driver_${driverIndex}_first_name`}
-                  label="First Name"
-                  value={driver.first_name}
-                  onChange={(e) => updateDriver(driverIndex, 'first_name', e.target.value)}
-                  error={validationErrors[`${driverIndex}_first_name`]}
-                  required
-                />
-                <FloatingInput
-                  id={`driver_${driverIndex}_last_name`}
-                  label="Second Name"
-                  value={driver.last_name}
-                  onChange={(e) => updateDriver(driverIndex, 'last_name', e.target.value)}
-                  error={validationErrors[`${driverIndex}_last_name`]}
-                  required
-                />
-              </div>
-
-              {/* Row 2: Email, Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <EmailInput
-                  id={`driver_${driverIndex}_email`}
-                  value={driver.email}
-                  onChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
-                  error={validationErrors[`${driverIndex}_email`]}
-                  required
-                />
-                <FloatingInput
-                  id={`driver_${driverIndex}_phone`}
-                  label="Phone number"
-                  type="tel"
-                  value={driver.phone}
-                  onChange={(e) => updateDriver(driverIndex, 'phone', e.target.value)}
-                  error={validationErrors[`${driverIndex}_phone`]}
-                  required
-                />
-              </div>
-
-              {/* Row 3: Country, City */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <FloatingSelect
-                  id={`driver_${driverIndex}_country`}
-                  label="Country"
-                  value={driver.country}
-                  onValueChange={(value) => updateDriver(driverIndex, 'country', value)}
-                  error={validationErrors[`${driverIndex}_country`]}
-                  disabled={loadingCountries}
-                  placeholder={loadingCountries ? 'Loading...' : 'Country *'}
-                  required
+          return (
+            <div
+              key={driverIndex}
+              className="bg-white rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden"
+            >
+              {/* Remove Driver Button */}
+              {driverIndex > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-4 right-4 z-10"
+                  onClick={() => removeDriver(driverIndex)}
                 >
-                  {countries.map((country) => (
-                    <SelectItem key={country.id} value={country.id}>
-                      {country.name}
-                    </SelectItem>
-                  ))}
-                </FloatingSelect>
-                <FloatingInput
-                  id={`driver_${driverIndex}_city`}
-                  label="City"
-                  value={driver.city}
-                  onChange={(e) => updateDriver(driverIndex, 'city', e.target.value)}
-                  error={validationErrors[`${driverIndex}_city`]}
-                  required
-                />
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+
+              {/* Section Header */}
+              <div className="text-center py-4 border-b border-slate-100">
+                <h3 className="text-base font-semibold text-gray-800">
+                  {driverIndex === 0 ? 'Head driver' : `Additional Driver ${driverIndex}`}
+                </h3>
               </div>
 
-              {/* Row 4: Address, Date of birthday */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <FloatingInput
-                  id={`driver_${driverIndex}_address`}
-                  label="Address"
-                  value={driver.address}
-                  onChange={(e) => updateDriver(driverIndex, 'address', e.target.value)}
-                  error={validationErrors[`${driverIndex}_address`]}
-                  required
-                />
-                <FloatingDateInput
-                  id={`driver_${driverIndex}_birthday`}
-                  label="Date of birthday"
-                  value={driver.birthday}
-                  onChange={(e) => updateDriver(driverIndex, 'birthday', e.target.value)}
-                  error={validationErrors[`${driverIndex}_birthday`]}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Driver License Section */}
-            <div className="px-4 sm:px-5 pb-4 sm:pb-5">
-              <h4 className="text-sm font-semibold text-gray-800 mb-4">
-                Driver license
-              </h4>
-
-              {/* License Fields - responsive: 1 col mobile, 3 cols desktop */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <FloatingInput
-                  id={`driver_${driverIndex}_license_num`}
-                  label="Document number"
-                  value={driver.license_num}
-                  onChange={(e) => updateDriver(driverIndex, 'license_num', e.target.value)}
-                  error={validationErrors[`${driverIndex}_license_num`]}
-                  required
-                />
-                <FloatingDateInput
-                  id={`driver_${driverIndex}_license_from`}
-                  label="Issue date"
-                  value={driver.license_from}
-                  onChange={(e) => updateDriver(driverIndex, 'license_from', e.target.value)}
-                  error={validationErrors[`${driverIndex}_license_from`]}
-                  required
-                />
-                <FloatingDateInput
-                  id={`driver_${driverIndex}_license_to`}
-                  label="Exp date"
-                  value={driver.license_to}
-                  onChange={(e) => updateDriver(driverIndex, 'license_to', e.target.value)}
-                  error={validationErrors[`${driverIndex}_license_to`]}
-                  required
-                />
-              </div>
-
-              {/* Upload Area - Compact */}
-              <div className="flex flex-wrap items-start gap-3 sm:gap-4">
-                <label
-                  htmlFor={`driver_${driverIndex}_license_photo`}
-                  className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200"
-                >
-                  {Object.keys(uploadingFiles).some((key) =>
-                    key.startsWith(`${driverIndex}_`)
-                  ) ? (
-                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                  ) : (
-                    <>
-                      <Plus className="w-5 h-5 text-gray-400" />
-                      <span className="text-xs text-gray-400 mt-1">Upload</span>
-                    </>
-                  )}
-                  <Input
-                    type="file"
-                    id={`driver_${driverIndex}_license_photo`}
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(driverIndex, e.target.files)}
-                  />
-                </label>
-
-                {/* Uploaded Files - Horizontal scroll */}
-                {uploadedFiles[driverIndex] && uploadedFiles[driverIndex].length > 0 && (
-                  <div className="flex-1 flex gap-3 overflow-x-auto py-1">
-                    {uploadedFiles[driverIndex].map((file, fileIndex) => (
-                      <div
-                        key={`${driverIndex}_${fileIndex}`}
-                        className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 group"
-                      >
-                        {file.url ? (
-                          <img
-                            src={file.url}
-                            alt={file.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeUploadedFile(driverIndex, fileIndex)}
-                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+              {/* Email Verification Step */}
+              {currentStep === 'email' && (
+                <div className="p-4 sm:p-5 space-y-4">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <Input
+                        type="email"
+                        value={driver.email}
+                        onChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
+                        placeholder="Email *"
+                        className={`
+                          h-12 
+                          bg-slate-50/80 border-slate-200/80 
+                          rounded-xl text-gray-800
+                          placeholder:text-gray-400 placeholder:text-sm
+                          focus:bg-white focus:border-blue-400
+                          transition-all duration-200
+                          ${error ? 'border-red-400 bg-red-50/50' : ''}
+                        `}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => handleSendPass(driverIndex)}
+                      disabled={isLoading || !driver.email}
+                      className="h-12 px-6 rounded-xl bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Next'}
+                    </Button>
                   </div>
-                )}
-              </div>
-
-              {/* Upload Errors */}
-              {Object.entries(uploadErrors)
-                .filter(([key]) => key.startsWith(`${driverIndex}_`))
-                .map(([key, error]) => (
-                  <p key={key} className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {error}
+                  {error && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {error}
+                    </p>
+                  )}
+                  <p className="text-center text-sm text-gray-500">
+                    Please add your email to speed up the booking process
                   </p>
-                ))}
+                </div>
+              )}
+
+              {/* Code Verification Step */}
+              {currentStep === 'code' && (
+                <div className="p-4 sm:p-5 space-y-4">
+                  <div className="flex gap-3">
+                    <EmailVerificationInput
+                      email={driver.email}
+                      onEmailChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
+                      onClear={() => handleResetEmail(driverIndex)}
+                      verified={true}
+                      error={undefined}
+                    />
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        value={code}
+                        onChange={(e) => setVerificationCodes(prev => new Map(prev).set(driverIndex, e.target.value))}
+                        placeholder="Code"
+                        className="h-12 bg-slate-50/80 border-slate-200/80 rounded-xl text-gray-800 placeholder:text-gray-400"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => handleVerifyCode(driverIndex)}
+                      disabled={isLoading || !code}
+                      className="h-12 px-6 rounded-xl bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                    </Button>
+                  </div>
+                  {error && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {error}
+                    </p>
+                  )}
+                  <div className="text-center space-y-1">
+                    <p className="text-sm text-gray-600">
+                      Code has been sent to e-mail: <span className="text-blue-500 font-medium">{driver.email}</span>
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Code not received?{' '}
+                      <button
+                        type="button"
+                        onClick={() => handleSendPass(driverIndex)}
+                        disabled={isLoading}
+                        className="text-gray-700 underline hover:text-blue-500 border border-gray-300 px-2 py-0.5 rounded text-xs"
+                      >
+                        Try again
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Full Form Step */}
+              {currentStep === 'form' && (
+                <>
+                  {/* Personal Information */}
+                  <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+                    {/* Row 1: First Name, Second Name */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <FloatingInput
+                        id={`driver_${driverIndex}_first_name`}
+                        label="First Name"
+                        value={driver.first_name}
+                        onChange={(e) => updateDriver(driverIndex, 'first_name', e.target.value)}
+                        error={validationErrors[`${driverIndex}_first_name`]}
+                        required
+                      />
+                      <FloatingInput
+                        id={`driver_${driverIndex}_last_name`}
+                        label="Second Name"
+                        value={driver.last_name}
+                        onChange={(e) => updateDriver(driverIndex, 'last_name', e.target.value)}
+                        error={validationErrors[`${driverIndex}_last_name`]}
+                        required
+                      />
+                    </div>
+
+                    {/* Row 2: Email, Phone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <EmailVerificationInput
+                        email={driver.email}
+                        onEmailChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
+                        onClear={() => handleResetEmail(driverIndex)}
+                        verified={codeSent.get(driverIndex) || false}
+                        error={validationErrors[`${driverIndex}_email`]}
+                      />
+                      <FloatingInput
+                        id={`driver_${driverIndex}_phone`}
+                        label="Phone number"
+                        type="tel"
+                        value={driver.phone}
+                        onChange={(e) => updateDriver(driverIndex, 'phone', e.target.value)}
+                        error={validationErrors[`${driverIndex}_phone`]}
+                        required
+                      />
+                    </div>
+
+                    {/* Row 3: Country, City */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <FloatingSelect
+                        id={`driver_${driverIndex}_country`}
+                        label="Country"
+                        value={driver.country}
+                        onValueChange={(value) => updateDriver(driverIndex, 'country', value)}
+                        error={validationErrors[`${driverIndex}_country`]}
+                        disabled={loadingCountries}
+                        placeholder={loadingCountries ? 'Loading...' : 'Country *'}
+                        required
+                      >
+                        {countries.map((country) => (
+                          <SelectItem key={country.id} value={country.id}>
+                            {country.name}
+                          </SelectItem>
+                        ))}
+                      </FloatingSelect>
+                      <FloatingInput
+                        id={`driver_${driverIndex}_city`}
+                        label="City"
+                        value={driver.city}
+                        onChange={(e) => updateDriver(driverIndex, 'city', e.target.value)}
+                        error={validationErrors[`${driverIndex}_city`]}
+                        required
+                      />
+                    </div>
+
+                    {/* Row 4: Address, Date of birthday */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <FloatingInput
+                        id={`driver_${driverIndex}_address`}
+                        label="Address"
+                        value={driver.address}
+                        onChange={(e) => updateDriver(driverIndex, 'address', e.target.value)}
+                        error={validationErrors[`${driverIndex}_address`]}
+                        required
+                      />
+                      <FloatingDateInput
+                        id={`driver_${driverIndex}_birthday`}
+                        label="Date of birthday"
+                        value={driver.birthday}
+                        onChange={(e) => updateDriver(driverIndex, 'birthday', e.target.value)}
+                        error={validationErrors[`${driverIndex}_birthday`]}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Driver License Section */}
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-4">
+                      Driver license
+                    </h4>
+
+                    {/* License Fields - responsive: 1 col mobile, 3 cols desktop */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                      <FloatingInput
+                        id={`driver_${driverIndex}_license_num`}
+                        label="Document number"
+                        value={driver.license_num}
+                        onChange={(e) => updateDriver(driverIndex, 'license_num', e.target.value)}
+                        error={validationErrors[`${driverIndex}_license_num`]}
+                        required
+                      />
+                      <FloatingDateInput
+                        id={`driver_${driverIndex}_license_from`}
+                        label="Issue date"
+                        value={driver.license_from}
+                        onChange={(e) => updateDriver(driverIndex, 'license_from', e.target.value)}
+                        error={validationErrors[`${driverIndex}_license_from`]}
+                        required
+                      />
+                      <FloatingDateInput
+                        id={`driver_${driverIndex}_license_to`}
+                        label="Exp date"
+                        value={driver.license_to}
+                        onChange={(e) => updateDriver(driverIndex, 'license_to', e.target.value)}
+                        error={validationErrors[`${driverIndex}_license_to`]}
+                        required
+                      />
+                    </div>
+
+                    {/* Upload Area - Compact */}
+                    <div className="flex flex-wrap items-start gap-3 sm:gap-4">
+                      <label
+                        htmlFor={`driver_${driverIndex}_license_photo`}
+                        className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200"
+                      >
+                        {Object.keys(uploadingFiles).some((key) =>
+                          key.startsWith(`${driverIndex}_`)
+                        ) ? (
+                          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                        ) : (
+                          <>
+                            <Plus className="w-5 h-5 text-gray-400" />
+                            <span className="text-xs text-gray-400 mt-1">Upload</span>
+                          </>
+                        )}
+                        <Input
+                          type="file"
+                          id={`driver_${driverIndex}_license_photo`}
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(driverIndex, e.target.files)}
+                        />
+                      </label>
+
+                      {/* Uploaded Files - Horizontal scroll */}
+                      {uploadedFiles[driverIndex] && uploadedFiles[driverIndex].length > 0 && (
+                        <div className="flex-1 flex gap-3 overflow-x-auto py-1">
+                          {uploadedFiles[driverIndex].map((file, fileIndex) => (
+                            <div
+                              key={`${driverIndex}_${fileIndex}`}
+                              className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 group"
+                            >
+                              {file.url ? (
+                                <img
+                                  src={file.url}
+                                  alt={file.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeUploadedFile(driverIndex, fileIndex)}
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload Errors */}
+                    {Object.entries(uploadErrors)
+                      .filter(([key]) => key.startsWith(`${driverIndex}_`))
+                      .map(([key, error]) => (
+                        <p key={key} className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {error}
+                        </p>
+                      ))}
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         {/* Add New Driver Button - Part of drivers section */}
         <button
           type="button"
