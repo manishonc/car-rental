@@ -1,7 +1,7 @@
 'use server';
 
 import { getCompanySettings, searchVehicles, createOrder, uploadFile, updateOrder, confirmOrder, getCountries, cancelOrder, sendPass, verifyContact } from '@/lib/api/rentsyst';
-import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, Country, CancelOrderResponse, ContactDriver } from '@/lib/api/types';
+import { Location, SearchResponse, CreateOrderParams, FileUploadResponse, Driver, ConfirmOrderParams, ConfirmOrderResponse, Country, CancelOrderResponse, ContactDriver } from '@/lib/api/types';
 
 export interface SearchFormState {
   vehicles: SearchResponse['vehicles'] | null;
@@ -144,6 +144,7 @@ export async function updateOrderAction(orderId: string, insuranceId: number): P
 export interface ConfirmOrderResult {
   success: boolean;
   error: string | null;
+  data?: ConfirmOrderResponse;
 }
 
 export async function confirmOrderAction(
@@ -156,10 +157,11 @@ export async function confirmOrderAction(
       drivers,
       payment_method: paymentMethod,
     };
-    await confirmOrder(orderId, params);
+    const response = await confirmOrder(orderId, params);
     return {
       success: true,
       error: null,
+      data: response,
     };
   } catch (err) {
     console.error('Order confirmation error:', err);

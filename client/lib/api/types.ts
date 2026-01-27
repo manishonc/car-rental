@@ -148,7 +148,10 @@ export interface ConfirmOrderParams {
 }
 
 export interface ConfirmOrderResponse {
-  [key: string]: any; // Response structure may vary
+  payment_link: string;
+  status: string;
+  payment_id: string;
+  unique_number: string;
 }
 
 export interface FileUploadResponse {

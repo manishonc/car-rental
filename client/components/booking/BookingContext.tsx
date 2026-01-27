@@ -52,6 +52,7 @@ export interface BookingState {
   isConfirmingOrder: boolean;
   confirmationError: string | null;
   orderConfirmed: boolean;
+  paymentMethod: 'card' | 'cash';
 }
 
 // Action Types
@@ -85,6 +86,7 @@ type BookingAction =
   | { type: 'SET_IS_CONFIRMING_ORDER'; payload: boolean }
   | { type: 'SET_CONFIRMATION_ERROR'; payload: string | null }
   | { type: 'SET_ORDER_CONFIRMED'; payload: boolean }
+  | { type: 'SET_PAYMENT_METHOD'; payload: 'card' | 'cash' }
   | { type: 'RESET_BOOKING' }
   | { type: 'START_NEW_SEARCH' };
 
@@ -132,6 +134,7 @@ const initialState: BookingState = {
   isConfirmingOrder: false,
   confirmationError: null,
   orderConfirmed: false,
+  paymentMethod: 'card',
 };
 
 // Reducer
@@ -265,6 +268,9 @@ function bookingReducer(state: BookingState, action: BookingAction): BookingStat
     case 'SET_ORDER_CONFIRMED':
       return { ...state, orderConfirmed: action.payload };
     
+    case 'SET_PAYMENT_METHOD':
+      return { ...state, paymentMethod: action.payload };
+    
     case 'RESET_BOOKING':
       return {
         ...initialState,
@@ -295,6 +301,7 @@ function bookingReducer(state: BookingState, action: BookingAction): BookingStat
         isConfirmingOrder: false,
         confirmationError: null,
         orderConfirmed: false,
+        paymentMethod: 'card',
       };
     
     default:
