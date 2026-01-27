@@ -151,12 +151,6 @@ export function ConfirmOrderStep() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="outline" onClick={prevStep}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Extras
-      </Button>
-
       <div className="bg-card rounded-xl border shadow-sm p-6">
         <h2 className="text-2xl font-semibold mb-6">Confirm Your Booking</h2>
 

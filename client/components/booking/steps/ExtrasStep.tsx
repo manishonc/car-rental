@@ -79,12 +79,6 @@ export function ExtrasStep() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="outline" onClick={prevStep}>
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Your Data
-      </Button>
-
       <div className="bg-card rounded-xl border shadow-sm p-6">
         <div className="flex items-center gap-3 mb-6">
           <Shield className="w-6 h-6 text-primary" />

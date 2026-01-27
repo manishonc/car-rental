@@ -459,12 +459,6 @@ export function DriverDataStep() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="outline" onClick={prevStep} className="rounded-xl">
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Vehicle Selection
-      </Button>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {drivers.map((driver, driverIndex) => (
           <div
