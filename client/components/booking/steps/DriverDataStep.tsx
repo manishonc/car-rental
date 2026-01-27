@@ -689,22 +689,23 @@ export function DriverDataStep() {
             </div>
           </div>
         ))}
+        {/* Add New Driver Button - Part of drivers section */}
+        <button
+          type="button"
+          onClick={addDriver}
+          className="w-full py-4 border-2 border-dashed border-slate-300 rounded-2xl text-blue-500 font-medium hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Add new driver
+        </button>
 
-        {/* Action Buttons - Stack on mobile */}
-        <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-between pt-2">
-          <Button
-            type="button"
-            onClick={addDriver}
-            className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-6 py-2.5 text-sm font-medium shadow-sm w-full sm:w-auto"
-          >
-            Add new driver
-          </Button>
-
+        {/* Continue Button - Standalone action */}
+        <div className="pt-4">
           <Button
             type="submit"
             size="lg"
             disabled={isAnyUploading}
-            className="rounded-xl px-8 bg-primary hover:bg-primary/90 w-full sm:w-auto"
+            className="w-full rounded-xl py-6 bg-primary hover:bg-primary/90 text-base font-medium"
           >
             {isAnyUploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Continue to Extras
