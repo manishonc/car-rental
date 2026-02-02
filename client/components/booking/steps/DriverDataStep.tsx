@@ -251,9 +251,16 @@ export function DriverDataStep() {
   const [loadingCountries, setLoadingCountries] = useState(true);
 
   // Email verification state for each driver
-  const [verificationSteps, setVerificationSteps] = useState<Map<number, VerificationStep>>(
-    new Map([[0, 'email']])
-  );
+  // Initialize based on whether drivers already have data filled in
+  const [verificationSteps, setVerificationSteps] = useState<Map<number, VerificationStep>>(() => {
+    const initialSteps = new Map<number, VerificationStep>();
+    drivers.forEach((driver, index) => {
+      // If driver has essential data filled, assume they completed verification
+      const hasData = driver.first_name && driver.last_name && driver.email && driver.phone;
+      initialSteps.set(index, hasData ? 'form' : 'email');
+    });
+    return initialSteps;
+  });
   const [verificationCodes, setVerificationCodes] = useState<Map<number, string>>(new Map());
   const [isVerifying, setIsVerifying] = useState<Map<number, boolean>>(new Map());
   const [verificationErrors, setVerificationErrors] = useState<Map<number, string>>(new Map());
@@ -612,9 +619,9 @@ export function DriverDataStep() {
 
               {/* Email Verification Step */}
               {currentStep === 'email' && (
-                <div className="p-6 space-y-4">
-                  <div className="flex gap-3">
-                    <div className="flex-1">
+                <div className="p-4 sm:p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="w-full sm:flex-1">
                       <div className="input-group rounded-xl px-4 py-3">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
                           Email *
@@ -628,12 +635,12 @@ export function DriverDataStep() {
                         />
                       </div>
                     </div>
-                    <div className="flex items-end">
+                    <div className="flex items-end w-full sm:w-auto">
                       <Button
                         type="button"
                         onClick={() => handleSendPass(driverIndex)}
                         disabled={isLoading || !driver.email}
-                        className="h-[58px] px-6 rounded-xl"
+                        className="h-[58px] w-full sm:w-auto px-6 rounded-xl"
                       >
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Next'}
                       </Button>
@@ -653,38 +660,45 @@ export function DriverDataStep() {
 
               {/* Code Verification Step */}
               {currentStep === 'code' && (
-                <div className="p-6 space-y-4">
-                  <div className="flex gap-3">
-                    <EmailVerificationInput
-                      email={driver.email}
-                      onEmailChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
-                      onClear={() => handleResetEmail(driverIndex)}
-                      verified={true}
-                      error={undefined}
-                    />
-                    <div className="flex-1">
-                      <div className="input-group rounded-xl px-4 py-3">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
-                          Code
-                        </label>
-                        <Input
-                          type="text"
-                          value={code}
-                          onChange={(e) => setVerificationCodes(prev => new Map(prev).set(driverIndex, e.target.value))}
-                          placeholder="Enter code"
-                          className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0 placeholder:text-slate-300"
-                        />
-                      </div>
+                <div className="p-4 sm:p-6 space-y-4">
+                  <div className="flex flex-col gap-3">
+                    {/* Email display row */}
+                    <div className="w-full">
+                      <EmailVerificationInput
+                        email={driver.email}
+                        onEmailChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
+                        onClear={() => handleResetEmail(driverIndex)}
+                        verified={true}
+                        error={undefined}
+                      />
                     </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        onClick={() => handleVerifyCode(driverIndex)}
-                        disabled={isLoading || !code}
-                        className="h-[58px] px-6 rounded-xl"
-                      >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                      </Button>
+                    {/* Code input and button row */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="w-full sm:flex-1">
+                        <div className="input-group rounded-xl px-4 py-3">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+                            Verification Code *
+                          </label>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={code}
+                            onChange={(e) => setVerificationCodes(prev => new Map(prev).set(driverIndex, e.target.value))}
+                            placeholder="Enter 6-digit code"
+                            className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0 placeholder:text-slate-300"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-end w-full sm:w-auto">
+                        <Button
+                          type="button"
+                          onClick={() => handleVerifyCode(driverIndex)}
+                          disabled={isLoading || !code}
+                          className="h-[58px] w-full sm:w-auto px-6 rounded-xl"
+                        >
+                          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify'}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   {error && (
@@ -694,7 +708,7 @@ export function DriverDataStep() {
                     </p>
                   )}
                   <div className="text-center space-y-1">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-400 break-all">
                       Code has been sent to: <span className="text-indigo-600 font-medium">{driver.email}</span>
                     </p>
                     <p className="text-sm text-slate-400">
@@ -915,10 +929,10 @@ export function DriverDataStep() {
         <button
           type="button"
           onClick={addDriver}
-          className="w-full py-4 border-2 border-dashed border-slate-300 rounded-[2rem] text-indigo-600 font-medium hover:border-indigo-400 hover:bg-indigo-50/50 transition-all duration-200 flex items-center justify-center gap-2"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-slate-500 hover:text-indigo-600 border border-slate-200 hover:border-indigo-300 rounded-full bg-white hover:bg-indigo-50/50 transition-all duration-200"
         >
-          <Plus className="w-5 h-5" />
-          Add new driver
+          <Plus className="w-4 h-4" />
+          Add driver
         </button>
 
         {/* Continue Button */}
