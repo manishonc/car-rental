@@ -121,6 +121,8 @@ function DateGroup({
   onChange,
   error,
   required = false,
+  min,
+  max,
 }: {
   id: string;
   label: string;
@@ -128,6 +130,8 @@ function DateGroup({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: string;
   required?: boolean;
+  min?: string;
+  max?: string;
 }) {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -163,6 +167,8 @@ function DateGroup({
             onChange={onChange}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            min={min}
+            max={max}
             className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0"
           />
         )}
@@ -811,6 +817,7 @@ export function DriverDataStep() {
                         value={driver.birthday}
                         onChange={(e) => updateDriver(driverIndex, 'birthday', e.target.value)}
                         error={validationErrors[`${driverIndex}_birthday`]}
+                        max={new Date().toISOString().split('T')[0]}
                         required
                       />
                     </div>
@@ -837,6 +844,7 @@ export function DriverDataStep() {
                         value={driver.license_from}
                         onChange={(e) => updateDriver(driverIndex, 'license_from', e.target.value)}
                         error={validationErrors[`${driverIndex}_license_from`]}
+                        max={new Date().toISOString().split('T')[0]}
                         required
                       />
                       <DateGroup
@@ -845,6 +853,7 @@ export function DriverDataStep() {
                         value={driver.license_to}
                         onChange={(e) => updateDriver(driverIndex, 'license_to', e.target.value)}
                         error={validationErrors[`${driverIndex}_license_to`]}
+                        min={new Date().toISOString().split('T')[0]}
                         required
                       />
                     </div>
