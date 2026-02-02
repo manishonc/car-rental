@@ -14,9 +14,12 @@ import {
   CreditCard,
   Banknote,
   Clock,
+  ArrowLeft,
 } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { updateOrderAction, confirmOrderAction } from '@/app/actions';
+import { Stepper } from '@/components/ui/stepper';
+import { bookingSteps } from '../BookingWizard';
 
 export function ConfirmOrderStep() {
   const { state, dispatch, prevStep } = useBooking();
@@ -35,6 +38,7 @@ export function ConfirmOrderStep() {
     confirmationError,
     orderConfirmed,
     paymentMethod,
+    maxCompletedStep,
   } = state;
 
   const [localError, setLocalError] = useState<string | null>(null);
@@ -76,7 +80,6 @@ export function ConfirmOrderStep() {
     dispatch({ type: 'SET_IS_UPDATING_ORDER', payload: true });
 
     try {
-      // First, update order with insurance
       const updateResult = await updateOrderAction(orderId, selectedInsurance);
 
       if (!updateResult.success) {
@@ -88,14 +91,11 @@ export function ConfirmOrderStep() {
         return;
       }
 
-      // Add a small delay to ensure server has processed the insurance update
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Then, confirm the order with retry logic
       dispatch({ type: 'SET_IS_CONFIRMING_ORDER', payload: true });
       let confirmResult = await confirmOrderAction(orderId, drivers, paymentMethod);
 
-      // Retry once if confirmation fails
       if (!confirmResult.success) {
         console.log('Confirm order failed, retrying...');
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -108,7 +108,6 @@ export function ConfirmOrderStep() {
           payload: confirmResult.error || 'Failed to confirm order',
         });
       } else {
-        // Handle payment redirect for card payments
         if (paymentMethod === 'card' && confirmResult.data?.payment_id) {
           const paymentUrl = `https://pay.rentsyst.com/?payment_id=${confirmResult.data.payment_id}`;
           window.location.href = paymentUrl;
@@ -119,7 +118,6 @@ export function ConfirmOrderStep() {
             payload: 'Payment ID not received. Please contact support.',
           });
         } else {
-          // Cash payment - show success message
           dispatch({ type: 'SET_ORDER_CONFIRMED', payload: true });
           dispatch({ type: 'SET_MAX_COMPLETED_STEP', payload: 5 });
         }
@@ -139,216 +137,74 @@ export function ConfirmOrderStep() {
   // Success State
   if (orderConfirmed) {
     return (
-      <div className="bg-card rounded-2xl border border-border p-6 sm:p-8 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-green-600" />
-        </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Booking Confirmed!</h2>
-        <p className="text-muted-foreground mb-6">
-          Your order has been successfully confirmed. You will receive a
-          confirmation email shortly.
-        </p>
-        {orderId && (
-          <p className="text-sm text-muted-foreground">
-            Order Reference: <span className="font-mono font-medium text-foreground">{orderId}</span>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="bg-white rounded-[2rem] border border-slate-200 p-8 sm:p-12 text-center max-w-md mx-auto shadow-xl">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Booking Confirmed!</h2>
+          <p className="text-slate-500 mb-6">
+            Your order has been successfully confirmed. You will receive a
+            confirmation email shortly.
           </p>
-        )}
-        <Button
-          className="mt-6 rounded-xl"
-          onClick={() => {
-            dispatch({ type: 'RESET_BOOKING' });
-          }}
-        >
-          Book Another Vehicle
-        </Button>
+          {orderId && (
+            <p className="text-sm text-slate-400 mb-6">
+              Order Reference: <span className="font-mono font-medium text-slate-900">{orderId}</span>
+            </p>
+          )}
+          <Button
+            className="rounded-xl"
+            onClick={() => {
+              dispatch({ type: 'RESET_BOOKING' });
+            }}
+          >
+            Book Another Vehicle
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-2xl border border-border p-5 sm:p-6">
-        <h2 className="text-xl font-semibold text-foreground mb-6">Confirm Your Booking</h2>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <button
+            type="button"
+            onClick={prevStep}
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
+            Confirm Booking
+          </h2>
+          <p className="text-slate-500 mt-1">Review your details and complete your booking</p>
+        </div>
+        <Stepper
+          currentStep={5}
+          steps={bookingSteps}
+          maxCompletedStep={maxCompletedStep}
+        />
+      </div>
 
-        {/* Order Summary Sections */}
-        <div className="space-y-5">
-          {/* Vehicle Information */}
-          {selectedVehicle && (
-            <div className="pb-4 border-b border-border/50">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Car className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground">Vehicle</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Vehicle</p>
-                  <p className="font-medium text-foreground">
-                    {selectedVehicle.brand} {selectedVehicle.mark}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Type</p>
-                  <p className="font-medium text-foreground">{selectedVehicle.group}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Transmission</p>
-                  <p className="font-medium text-foreground capitalize">
-                    {selectedVehicle.transmission}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Fuel</p>
-                  <p className="font-medium text-foreground capitalize">{selectedVehicle.fuel}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Rental Period */}
-          {searchDates && (
-            <div className="pb-4 border-b border-border/50">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground">Rental Period</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Pickup</p>
-                  <p className="font-medium text-foreground">
-                    {new Date(searchDates.dateFrom).toLocaleDateString('en-GB', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {searchDates.timeFrom}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Return</p>
-                  <p className="font-medium text-foreground">
-                    {new Date(searchDates.dateTo).toLocaleDateString('en-GB', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {searchDates.timeTo}
-                  </p>
-                </div>
-              </div>
-              {locationData && (
-                <div className="mt-3 flex items-start gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-foreground">{locationData.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {locationData.address}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Driver Information */}
-          {drivers.length > 0 && (
-            <div className="pb-4 border-b border-border/50">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <User className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground">
-                  Driver{drivers.length > 1 ? 's' : ''}
-                </h3>
-              </div>
-              <div className="space-y-3">
-                {drivers.map((driver, index) => (
-                  <div key={index} className="text-sm">
-                    <p className="font-medium text-foreground">
-                      {driver.first_name} {driver.last_name}
-                      {index === 0 && (
-                        <span className="ml-2 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                          Primary
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-muted-foreground text-xs">{driver.email}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Insurance */}
-          {selectedInsuranceData && (
-            <div className="pb-4 border-b border-border/50">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground">Insurance</h3>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <div>
-                  <p className="font-medium text-foreground">{selectedInsuranceData.option.title}</p>
-                  {selectedInsuranceData.option.deposit === 1 && (
-                    <p className="text-xs text-muted-foreground">
-                      Deposit: {selectedInsuranceData.option.deposit_price} {currency}
-                    </p>
-                  )}
-                </div>
-                <p className="font-semibold text-foreground">
-                  {selectedInsuranceData.calculatedPrice.toFixed(2)} {currency}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Price Breakdown */}
-          <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
-            <h4 className="font-medium text-foreground mb-3">Price Breakdown</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Vehicle Rental:</span>
-                <span className="font-medium text-foreground">
-                  {vehicleBasePrice.toFixed(2)} {currency}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Insurance:</span>
-                <span className="font-medium text-foreground">
-                  {insurancePrice.toFixed(2)} {currency}
-                </span>
-              </div>
-              <div className="flex justify-between text-base font-bold pt-2 border-t border-border/50">
-                <span className="text-foreground">Total:</span>
-                <span className="text-primary">
-                  {totalPrice.toFixed(2)} {currency}
-                </span>
-              </div>
-            </div>
-          </div>
-
+      {/* Two-column layout on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left: Payment & Actions (3 cols) */}
+        <div className="lg:col-span-3 space-y-6">
           {/* Payment Method Selection */}
-          <div className="pb-4 border-b border-border/50">
-            <h3 className="font-semibold text-foreground mb-3 text-sm">Payment Method</h3>
-            <div className="flex gap-2">
-              {/* Card Payment Option */}
-              <label 
+          <div className="bg-white rounded-[2rem] border border-slate-200 p-6">
+            <h3 className="font-semibold text-slate-900 mb-4">Payment Method</h3>
+            <div className="flex gap-3">
+              {/* Card Payment */}
+              <label
                 className={`
-                  flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all
-                  ${paymentMethod === 'card' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/40'
+                  flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all
+                  ${paymentMethod === 'card'
+                    ? 'border-indigo-600 bg-indigo-50/50'
+                    : 'border-slate-200 hover:border-slate-300'
                   }
                 `}
               >
@@ -361,26 +217,26 @@ export function ConfirmOrderStep() {
                   className="sr-only"
                 />
                 <div className={`
-                  w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                  ${paymentMethod === 'card' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}
+                  w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                  ${paymentMethod === 'card' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}
                 `}>
-                  <CreditCard className="w-4 h-4" />
+                  <CreditCard className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <span className={`text-sm font-medium block ${paymentMethod === 'card' ? 'text-primary' : 'text-foreground'}`}>
+                  <span className={`text-sm font-medium block ${paymentMethod === 'card' ? 'text-indigo-600' : 'text-slate-900'}`}>
                     Card
                   </span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">Pay online</span>
+                  <span className="text-xs text-slate-400">Pay online securely</span>
                 </div>
               </label>
 
-              {/* Cash Payment Option */}
-              <label 
+              {/* Cash Payment */}
+              <label
                 className={`
-                  flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all
-                  ${paymentMethod === 'cash' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-primary/40'
+                  flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all
+                  ${paymentMethod === 'cash'
+                    ? 'border-indigo-600 bg-indigo-50/50'
+                    : 'border-slate-200 hover:border-slate-300'
                   }
                 `}
               >
@@ -393,19 +249,163 @@ export function ConfirmOrderStep() {
                   className="sr-only"
                 />
                 <div className={`
-                  w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                  ${paymentMethod === 'cash' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}
+                  w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                  ${paymentMethod === 'cash' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}
                 `}>
-                  <Banknote className="w-4 h-4" />
+                  <Banknote className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <span className={`text-sm font-medium block ${paymentMethod === 'cash' ? 'text-primary' : 'text-foreground'}`}>
+                  <span className={`text-sm font-medium block ${paymentMethod === 'cash' ? 'text-indigo-600' : 'text-slate-900'}`}>
                     Cash
                   </span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">At pickup</span>
+                  <span className="text-xs text-slate-400">Pay at pickup</span>
                 </div>
               </label>
             </div>
+          </div>
+
+          {/* Booking Details Card */}
+          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 space-y-5">
+            {/* Vehicle Information */}
+            {selectedVehicle && (
+              <div className="pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                    <Car className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <h3 className="font-semibold text-slate-900">Vehicle</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide">Vehicle</p>
+                    <p className="font-medium text-slate-900">
+                      {selectedVehicle.brand} {selectedVehicle.mark}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide">Type</p>
+                    <p className="font-medium text-slate-900">{selectedVehicle.group}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide">Transmission</p>
+                    <p className="font-medium text-slate-900 capitalize">
+                      {selectedVehicle.transmission}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide">Fuel</p>
+                    <p className="font-medium text-slate-900 capitalize">{selectedVehicle.fuel}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rental Period */}
+            {searchDates && (
+              <div className="pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                    <Calendar className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <h3 className="font-semibold text-slate-900">Rental Period</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide">Pickup</p>
+                    <p className="font-medium text-slate-900">
+                      {new Date(searchDates.dateFrom).toLocaleDateString('en-GB', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </p>
+                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {searchDates.timeFrom}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs uppercase tracking-wide">Return</p>
+                    <p className="font-medium text-slate-900">
+                      {new Date(searchDates.dateTo).toLocaleDateString('en-GB', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </p>
+                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {searchDates.timeTo}
+                    </p>
+                  </div>
+                </div>
+                {locationData && (
+                  <div className="mt-3 flex items-start gap-2 text-sm">
+                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-slate-900">{locationData.name}</p>
+                      <p className="text-xs text-slate-400">
+                        {locationData.address}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Driver Information */}
+            {drivers.length > 0 && (
+              <div className="pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                    <User className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <h3 className="font-semibold text-slate-900">
+                    Driver{drivers.length > 1 ? 's' : ''}
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  {drivers.map((driver, index) => (
+                    <div key={index} className="text-sm">
+                      <p className="font-medium text-slate-900">
+                        {driver.first_name} {driver.last_name}
+                        {index === 0 && (
+                          <span className="ml-2 text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                            Primary
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-slate-400 text-xs">{driver.email}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Insurance */}
+            {selectedInsuranceData && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <h3 className="font-semibold text-slate-900">Insurance</h3>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <div>
+                    <p className="font-medium text-slate-900">{selectedInsuranceData.option.title}</p>
+                    {selectedInsuranceData.option.deposit === 1 && (
+                      <p className="text-xs text-slate-400">
+                        Deposit: {selectedInsuranceData.option.deposit_price} {currency}
+                      </p>
+                    )}
+                  </div>
+                  <p className="font-semibold text-slate-900">
+                    {selectedInsuranceData.calculatedPrice.toFixed(2)} {currency}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Terms & Conditions */}
@@ -418,15 +418,15 @@ export function ConfirmOrderStep() {
                 onChange={(e) =>
                   dispatch({ type: 'SET_TERMS_ACCEPTED', payload: e.target.checked })
                 }
-                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                className="mt-1 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               />
-              <label htmlFor="terms" className="text-sm cursor-pointer text-foreground">
+              <label htmlFor="terms" className="text-sm cursor-pointer text-slate-700">
                 I have read and accept the{' '}
-                <a href="#" className="text-primary hover:underline">
+                <a href="#" className="text-indigo-600 hover:underline">
                   Terms & Conditions
                 </a>{' '}
                 and{' '}
-                <a href="#" className="text-primary hover:underline">
+                <a href="#" className="text-indigo-600 hover:underline">
                   Privacy Policy
                 </a>
               </label>
@@ -434,7 +434,7 @@ export function ConfirmOrderStep() {
 
             {/* Error Messages */}
             {(confirmationError || localError) && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-sm">
+              <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm">
                 <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                 <span className="text-amber-800">{confirmationError || localError}</span>
               </div>
@@ -445,7 +445,7 @@ export function ConfirmOrderStep() {
               onClick={handleConfirmOrder}
               disabled={!termsAccepted || isUpdatingOrder || isConfirmingOrder}
               size="lg"
-              className="w-full rounded-xl py-6"
+              className="w-full rounded-xl py-6 bg-slate-900 hover:bg-indigo-600"
             >
               {(isUpdatingOrder || isConfirmingOrder) && (
                 <Loader2 className="animate-spin mr-2 h-4 w-4" />
@@ -460,15 +460,81 @@ export function ConfirmOrderStep() {
             </Button>
 
             {paymentMethod === 'card' && (
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs text-center text-slate-400">
                 You will be redirected to complete the payment securely
               </p>
             )}
             {paymentMethod === 'cash' && (
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs text-center text-slate-400">
                 You will pay in cash upon vehicle pickup
               </p>
             )}
+          </div>
+        </div>
+
+        {/* Right: Dark Order Summary (2 cols) */}
+        <div className="lg:col-span-2">
+          <div className="bg-slate-900 text-white rounded-[2rem] p-6 sticky top-8 relative overflow-hidden">
+            {/* Decorative indigo blur */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-600/30 rounded-full blur-3xl" />
+
+            <h3 className="font-semibold text-white/90 text-sm uppercase tracking-wider mb-6 relative">
+              Order Summary
+            </h3>
+
+            <div className="space-y-4 relative">
+              {selectedVehicle && (
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-white">{selectedVehicle.brand} {selectedVehicle.mark}</p>
+                    <p className="text-xs text-slate-400">{selectedVehicle.group}</p>
+                  </div>
+                  <p className="font-semibold text-white">
+                    {vehicleBasePrice.toFixed(2)} {currency}
+                  </p>
+                </div>
+              )}
+
+              {selectedInsuranceData && (
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-white">{selectedInsuranceData.option.title}</p>
+                    <p className="text-xs text-slate-400">Insurance</p>
+                  </div>
+                  <p className="font-semibold text-white">
+                    {insurancePrice.toFixed(2)} {currency}
+                  </p>
+                </div>
+              )}
+
+              <div className="border-t border-white/10 pt-4 mt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Total</span>
+                  <span className="text-2xl font-bold text-white">
+                    {totalPrice.toFixed(2)} {currency}
+                  </span>
+                </div>
+              </div>
+
+              {searchDates && (
+                <div className="border-t border-white/10 pt-4 text-sm">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      {new Date(searchDates.dateFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      {' '}&rarr;{' '}
+                      {new Date(searchDates.dateTo).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                  {locationData && (
+                    <div className="flex items-center gap-2 text-slate-400 mt-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>{locationData.name}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

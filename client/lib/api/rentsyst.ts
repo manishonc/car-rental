@@ -233,7 +233,7 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     throw new Error('Missing RENTSYST_API_URL');
   }
 
-  const requestBody: any = {
+  const requestBody: Record<string, unknown> = {
     vehicle_id: params.vehicle_id,
     date_from: params.date_from,
     date_to: params.date_to,

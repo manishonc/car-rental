@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, startTransition, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useEffect, startTransition, useState, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -12,9 +10,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, CarFront, MapPin, Clock } from 'lucide-react';
+import { Loader2, CarFront, MapPin, Calendar, ArrowRight } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { searchCars, getLocations, cancelOrderAction } from '@/app/actions';
+import { Stepper } from '@/components/ui/stepper';
+import { bookingSteps } from '../BookingWizard';
 
 export function SearchStep() {
   const { state, dispatch, nextStep } = useBooking();
@@ -24,20 +24,45 @@ export function SearchStep() {
     selectedLocation,
     searchError,
     isSearching,
+    maxCompletedStep,
   } = state;
 
   // State for different drop-off location
   const [differentDropLocation, setDifferentDropLocation] = useState(false);
   const [dropLocation, setDropLocation] = useState('');
 
-  // Default dates - format for datetime-local input (YYYY-MM-DDTHH:MM)
-  const defaultPickupDateTime = '2026-02-16T09:15';
-  const defaultReturnDateTime = '2026-02-17T09:45';
+  // Smart date input state: show text placeholder, switch to datetime-local on focus
+  const [pickupFocused, setPickupFocused] = useState(false);
+  const [returnFocused, setReturnFocused] = useState(false);
+  const [pickupValue, setPickupValue] = useState(
+    state.searchDates?.dateFrom && state.searchDates?.timeFrom
+      ? `${state.searchDates.dateFrom}T${state.searchDates.timeFrom}`
+      : ''
+  );
+  const [returnValue, setReturnValue] = useState(
+    state.searchDates?.dateTo && state.searchDates?.timeTo
+      ? `${state.searchDates.dateTo}T${state.searchDates.timeTo}`
+      : ''
+  );
+  const pickupRef = useRef<HTMLInputElement>(null);
+  const returnRef = useRef<HTMLInputElement>(null);
+
+  // Format helper for datetime-local input (YYYY-MM-DDTHH:MM)
   const formatDateTime = (date: Date) => {
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
   const getMinDateTime = () => formatDateTime(new Date());
+
+  // Format display value for date inputs
+  const formatDisplayValue = (val: string) => {
+    if (!val) return '';
+    const date = new Date(val);
+    return date.toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  };
 
   // Load locations on mount
   useEffect(() => {
@@ -83,7 +108,7 @@ export function SearchStep() {
 
     const pickupDateTime = new Date(pickupDateTimeStr);
     const returnDateTime = new Date(returnDateTimeStr);
-    
+
     // Add hidden form fields for backend compatibility
     formData.set('date_from', dateFrom);
     formData.set('time_from', timeFrom);
@@ -148,24 +173,37 @@ export function SearchStep() {
   };
 
   return (
-    <div className="p-4">
-      <form onSubmit={handleFormSubmit} className="space-y-4">
-        {/* Location Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <MapPin className="w-4 h-4" />
-            <span>Location</span>
-          </div>
-          
-          <div className="space-y-3">
-            {/* Pickup Location */}
-            <div>
-              <Label htmlFor="pickup_location" className="text-xs text-muted-foreground mb-1 block">
-                Pickup
-              </Label>
+    <div className="min-h-[70vh] flex flex-col justify-center">
+      {/* Hero Header with Stepper */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+        <div>
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
+            Where is your next journey?
+          </h2>
+          <p className="text-lg text-slate-500 max-w-xl">
+            Experience the freedom of the road with our premium fleet.
+          </p>
+        </div>
+        <Stepper
+          currentStep={1}
+          steps={bookingSteps}
+          maxCompletedStep={maxCompletedStep}
+        />
+      </div>
+
+      {/* Search Form - White pill container */}
+      <form onSubmit={handleFormSubmit}>
+        <div className="bg-white p-3 md:p-4 rounded-[2rem] shadow-xl shadow-indigo-100/50 border border-slate-200/60 mx-auto max-w-4xl">
+          {/* Desktop: 2 rows layout, Mobile: stacked */}
+          <div className="flex flex-col gap-3">
+            {/* Row 1: Location */}
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
+                <MapPin className="w-6 h-6" />
+              </div>
               {loadingLocations ? (
-                <div className="h-9 flex items-center px-3 rounded-md bg-muted/50 text-muted-foreground text-sm">
-                  <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                <div className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-14 pr-4 flex items-center text-slate-400 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   Loading...
                 </div>
               ) : (
@@ -177,7 +215,7 @@ export function SearchStep() {
                       dispatch({ type: 'SET_SELECTED_LOCATION', payload: value })
                     }
                   >
-                    <SelectTrigger className="w-full h-9 text-sm">
+                    <SelectTrigger className="w-full !h-14 md:!h-16 bg-slate-50 hover:bg-slate-100 rounded-[1.25rem] pl-14 pr-4 border border-transparent focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 font-medium text-sm shadow-none transition-all flex items-center justify-start">
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
@@ -192,29 +230,124 @@ export function SearchStep() {
               )}
             </div>
 
-            {/* Different drop location toggle */}
-            <div className="flex items-center justify-between py-1">
-              <Label htmlFor="different-drop" className="text-sm cursor-pointer">
-                Different drop-off location
-              </Label>
-              <Switch
-                id="different-drop"
-                checked={differentDropLocation}
-                onCheckedChange={setDifferentDropLocation}
-              />
-            </div>
+            {/* Row 2: Dates and Search Button */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {/* Pickup DateTime */}
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                {pickupFocused || pickupValue ? (
+                  <input
+                    ref={pickupRef}
+                    type="datetime-local"
+                    name="pickup_datetime"
+                    id="pickup_datetime"
+                    className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 transition-all"
+                    value={pickupValue}
+                    onChange={(e) => setPickupValue(e.target.value)}
+                    onBlur={() => { if (!pickupValue) setPickupFocused(false); }}
+                    min={getMinDateTime()}
+                    autoFocus={pickupFocused && !pickupValue}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    readOnly
+                    value=""
+                    className="w-full h-14 md:h-16 bg-slate-50 hover:bg-slate-100 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 cursor-pointer transition-all"
+                    placeholder="Pick-up Date & Time"
+                    onChange={() => {}}
+                    onFocus={() => setPickupFocused(true)}
+                    onClick={() => setPickupFocused(true)}
+                  />
+                )}
+                {/* Hidden input for form submission when using placeholder */}
+                {!pickupFocused && !pickupValue && (
+                  <input type="hidden" name="pickup_datetime" value="" />
+                )}
+              </div>
 
-            {/* Drop-off Location (conditional) */}
-            {differentDropLocation && (
-              <div>
-                <Label htmlFor="drop_location" className="text-xs text-muted-foreground mb-1 block">
-                  Drop-off
-                </Label>
+              {/* Return DateTime */}
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                {returnFocused || returnValue ? (
+                  <input
+                    ref={returnRef}
+                    type="datetime-local"
+                    name="return_datetime"
+                    id="return_datetime"
+                    className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 transition-all"
+                    value={returnValue}
+                    onChange={(e) => setReturnValue(e.target.value)}
+                    onBlur={() => { if (!returnValue) setReturnFocused(false); }}
+                    min={getMinDateTime()}
+                    autoFocus={returnFocused && !returnValue}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    readOnly
+                    value=""
+                    className="w-full h-14 md:h-16 bg-slate-50 hover:bg-slate-100 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 cursor-pointer transition-all"
+                    placeholder="Return Date & Time"
+                    onChange={() => {}}
+                    onFocus={() => setReturnFocused(true)}
+                    onClick={() => setReturnFocused(true)}
+                  />
+                )}
+                {!returnFocused && !returnValue && (
+                  <input type="hidden" name="return_datetime" value="" />
+                )}
+              </div>
+
+              {/* Search Button */}
+              <button
+                type="submit"
+                disabled={isSearching || loadingLocations}
+                className="w-full h-14 md:h-16 bg-slate-900 hover:bg-indigo-600 text-white rounded-[1.25rem] font-semibold text-base shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="animate-spin h-5 w-5" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    Search
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Different drop-off toggle */}
+        <div className="mt-4 px-2 flex items-center justify-between">
+          <Label htmlFor="different-drop" className="text-sm text-slate-500 cursor-pointer">
+            Different drop-off location
+          </Label>
+          <Switch
+            id="different-drop"
+            checked={differentDropLocation}
+            onCheckedChange={setDifferentDropLocation}
+          />
+        </div>
+
+        {/* Drop-off Location (conditional) */}
+        {differentDropLocation && (
+          <div className="mt-2 mx-auto max-w-4xl">
+            <div className="bg-white p-2 md:p-3 rounded-[2rem] shadow-lg border border-slate-200/60">
+              <div className="flex items-center gap-3 px-5 py-4">
+                <MapPin className="w-5 h-5 text-slate-400 shrink-0" />
                 <Select
                   value={dropLocation}
                   onValueChange={setDropLocation}
                 >
-                  <SelectTrigger className="w-full h-9 text-sm">
+                  <SelectTrigger className="w-full border-0 bg-transparent shadow-none p-0 h-auto text-slate-900 font-medium text-sm focus:ring-0">
                     <SelectValue placeholder="Select drop-off location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -226,81 +359,21 @@ export function SearchStep() {
                   </SelectContent>
                 </Select>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="h-px bg-border" />
-
-        {/* Date & Time Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>Date & Time</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="pickup_datetime" className="text-xs text-muted-foreground mb-1 block">
-                Pickup
-              </Label>
-              <Input
-                type="datetime-local"
-                name="pickup_datetime"
-                id="pickup_datetime"
-                className="h-9 text-sm"
-                defaultValue={
-                  state.searchDates?.dateFrom && state.searchDates?.timeFrom
-                    ? `${state.searchDates.dateFrom}T${state.searchDates.timeFrom}`
-                    : defaultPickupDateTime
-                }
-                required
-                min={getMinDateTime()}
-              />
-            </div>
-            <div>
-              <Label htmlFor="return_datetime" className="text-xs text-muted-foreground mb-1 block">
-                Return
-              </Label>
-              <Input
-                type="datetime-local"
-                name="return_datetime"
-                id="return_datetime"
-                className="h-9 text-sm"
-                defaultValue={
-                  state.searchDates?.dateTo && state.searchDates?.timeTo
-                    ? `${state.searchDates.dateTo}T${state.searchDates.timeTo}`
-                    : defaultReturnDateTime
-                }
-                required
-                min={getMinDateTime()}
-              />
             </div>
           </div>
-        </div>
+        )}
 
         {/* Error message */}
         {searchError && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-md text-sm">
+          <div className="flex items-center gap-2 px-4 py-3 mt-4 bg-amber-50 rounded-xl text-sm border border-amber-200 mx-auto max-w-4xl">
             <CarFront className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <span className="text-amber-800">
-              {searchError.includes('No vehicles') 
-                ? 'No vehicles available for the selected dates' 
+              {searchError.includes('No vehicles')
+                ? 'No vehicles available for the selected dates'
                 : searchError}
             </span>
           </div>
         )}
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          disabled={isSearching || loadingLocations}
-          className="w-full h-10"
-        >
-          {isSearching && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-          {isSearching ? 'Searching...' : 'Search Available Cars'}
-        </Button>
       </form>
     </div>
   );

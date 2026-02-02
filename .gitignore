@@ -1,0 +1,5 @@
+# Token cache (sensitive)
+.token-cache.json
+
+# OS
+.DS_Store
