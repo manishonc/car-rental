@@ -173,3 +173,21 @@
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
+
+/* Date picker overlay fixes for desktop */
+@media (min-width: 768px) {
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+  
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+  
+  /* Ensure date picker containers have proper positioning context */
+  input[type="datetime-local"] {
+    position: relative;
+  }
+}
