@@ -77,19 +77,6 @@ export function SearchStep() {
     }, 10);
   };
 
-  // Handle when picker is cancelled/closed without selection
-  const handlePickupCancel = () => {
-    if (!pickupValue) {
-      setPickupFocused(false);
-    }
-  };
-
-  const handleReturnCancel = () => {
-    if (!returnValue) {
-      setReturnFocused(false);
-    }
-  };
-
   // Format display value for date inputs
   const formatDisplayValue = (val: string) => {
     if (!val) return '';
@@ -311,7 +298,6 @@ export function SearchStep() {
                       value={pickupValue}
                       onChange={(e) => setPickupValue(e.target.value)}
                       onBlur={() => { if (!pickupValue) setPickupFocused(false); }}
-                      onCancel={handlePickupCancel}
                       min={getMinDateTime()}
                       autoFocus={pickupFocused && !pickupValue}
                     />
@@ -355,7 +341,6 @@ export function SearchStep() {
                       value={returnValue}
                       onChange={(e) => setReturnValue(e.target.value)}
                       onBlur={() => { if (!returnValue) setReturnFocused(false); }}
-                      onCancel={handleReturnCancel}
                       min={getMinDateTime()}
                       autoFocus={returnFocused && !returnValue}
                     />
