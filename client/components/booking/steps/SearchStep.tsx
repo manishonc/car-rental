@@ -281,9 +281,9 @@ export function SearchStep() {
             </div>
 
             {/* Row 2: Dates and Search Button */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 overflow-visible">
               {/* Pickup DateTime */}
-              <div ref={pickupContainerRef} className="relative group">
+              <div ref={pickupContainerRef} className="relative group isolate">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
                   <Calendar className="w-5 h-5" />
                 </div>
@@ -302,7 +302,7 @@ export function SearchStep() {
                       autoFocus={pickupFocused && !pickupValue}
                     />
                     {!pickupValue && (
-                      <div className="absolute left-12 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-sm font-medium">
+                      <div className="absolute left-12 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-sm font-medium md:hidden">
                         Pick-up Date & Time
                       </div>
                     )}
@@ -326,7 +326,7 @@ export function SearchStep() {
               </div>
 
               {/* Return DateTime */}
-              <div ref={returnContainerRef} className="relative group">
+              <div ref={returnContainerRef} className="relative group isolate">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
                   <Calendar className="w-5 h-5" />
                 </div>
@@ -345,7 +345,7 @@ export function SearchStep() {
                       autoFocus={returnFocused && !returnValue}
                     />
                     {!returnValue && (
-                      <div className="absolute left-12 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-sm font-medium">
+                      <div className="absolute left-12 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-sm font-medium md:hidden">
                         Return Date & Time
                       </div>
                     )}
