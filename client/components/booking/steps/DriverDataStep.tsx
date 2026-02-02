@@ -8,6 +8,8 @@ import { ArrowLeft, Plus, X, Trash2, Loader2, ImageIcon, AlertCircle, Check } fr
 import { useBooking } from '../BookingContext';
 import { uploadFileAction, getCountriesAction, sendPassAction, verifyContactAction } from '@/app/actions';
 import { Driver, Country, ContactDriver } from '@/lib/api/types';
+import { Stepper } from '@/components/ui/stepper';
+import { bookingSteps } from '../BookingWizard';
 
 interface ValidationErrors {
   [key: string]: string;
@@ -15,8 +17,8 @@ interface ValidationErrors {
 
 type VerificationStep = 'email' | 'code' | 'form';
 
-// Compact floating label input component
-function FloatingInput({
+// Input group component matching reference design
+function InputGroup({
   id,
   label,
   type = 'text',
@@ -38,26 +40,23 @@ function FloatingInput({
   disabled?: boolean;
 }) {
   return (
-    <div className="relative">
-      <Input
-        type={type}
-        id={id}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder || `${label}${required ? ' *' : ''}`}
-        disabled={disabled}
-        className={`
-          h-12 pt-2 
-          bg-card border-border 
-          rounded-xl text-foreground
-          placeholder:text-muted-foreground placeholder:text-sm
-          focus:bg-card focus:border-primary/50
-          transition-all duration-200
-          ${error ? 'border-destructive/50 bg-destructive/5' : ''}
-        `}
-      />
+    <div>
+      <div className={`input-group rounded-xl px-4 py-3 ${error ? 'border-red-400 bg-red-50/50' : ''}`}>
+        <label htmlFor={id} className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+          {label}{required ? ' *' : ''}
+        </label>
+        <Input
+          type={type}
+          id={id}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder || label}
+          disabled={disabled}
+          className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0 placeholder:text-slate-300"
+        />
+      </div>
       {error && (
-        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1 px-1">
           <AlertCircle className="w-3 h-3" />
           {error}
         </p>
@@ -66,8 +65,8 @@ function FloatingInput({
   );
 }
 
-// Compact floating label select component  
-function FloatingSelect({
+// Select group component
+function SelectGroup({
   id,
   label,
   value,
@@ -89,26 +88,23 @@ function FloatingSelect({
   placeholder?: string;
 }) {
   return (
-    <div className="relative">
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger
-          id={id}
-          className={`
-            h-12 pt-2
-            bg-card border-border
-            rounded-xl text-foreground
-            focus:bg-card focus:border-primary/50
-            transition-all duration-200
-            ${error ? 'border-destructive/50 bg-destructive/5' : ''}
-            ${!value ? '[&>span]:text-muted-foreground [&>span]:text-sm' : ''}
-          `}
-        >
-          <SelectValue placeholder={placeholder || `${label}${required ? ' *' : ''}`} />
-        </SelectTrigger>
-        <SelectContent>{children}</SelectContent>
-      </Select>
+    <div>
+      <div className={`input-group rounded-xl px-4 py-3 ${error ? 'border-red-400 bg-red-50/50' : ''}`}>
+        <label htmlFor={id} className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+          {label}{required ? ' *' : ''}
+        </label>
+        <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+          <SelectTrigger
+            id={id}
+            className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus:ring-0"
+          >
+            <SelectValue placeholder={placeholder || label} />
+          </SelectTrigger>
+          <SelectContent>{children}</SelectContent>
+        </Select>
+      </div>
       {error && (
-        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1 px-1">
           <AlertCircle className="w-3 h-3" />
           {error}
         </p>
@@ -117,8 +113,8 @@ function FloatingSelect({
   );
 }
 
-// Date input with label (for date inputs that don't support placeholders)
-function FloatingDateInput({
+// Date input group
+function DateGroup({
   id,
   label,
   value,
@@ -135,12 +131,10 @@ function FloatingDateInput({
 }) {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
   const showDatePicker = isFocused || value;
 
   const handlePlaceholderClick = () => {
     setIsFocused(true);
-    // Small delay to ensure input is rendered before focusing
     setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.showPicker?.();
@@ -148,45 +142,33 @@ function FloatingDateInput({
   };
 
   return (
-    <div className="relative">
-      {!showDatePicker ? (
-        // Placeholder view - looks like a text input
-        <div
-          onClick={handlePlaceholderClick}
-          className={`
-            h-12 w-full px-3 flex items-center
-            bg-card border border-border
-            rounded-xl text-muted-foreground text-sm
-            cursor-pointer
-            hover:border-primary/50 hover:bg-card
-            transition-all duration-200
-            ${error ? 'border-destructive/50 bg-destructive/5' : ''}
-          `}
-        >
+    <div>
+      <div className={`input-group rounded-xl px-4 py-3 ${error ? 'border-red-400 bg-red-50/50' : ''}`}>
+        <label htmlFor={id} className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
           {label}{required ? ' *' : ''}
-        </div>
-      ) : (
-        // Date picker view
-        <Input
-          ref={inputRef}
-          type="date"
-          id={id}
-          value={value}
-          onChange={onChange}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          className={`
-            h-12
-            bg-card border-border 
-            rounded-xl text-foreground text-sm
-            focus:bg-card focus:border-primary/50
-            transition-all duration-200
-            ${error ? 'border-destructive/50 bg-destructive/5' : ''}
-          `}
-        />
-      )}
+        </label>
+        {!showDatePicker ? (
+          <div
+            onClick={handlePlaceholderClick}
+            className="h-8 flex items-center text-slate-300 text-sm cursor-pointer"
+          >
+            Select date
+          </div>
+        ) : (
+          <Input
+            ref={inputRef}
+            type="date"
+            id={id}
+            value={value}
+            onChange={onChange}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0"
+          />
+        )}
+      </div>
       {error && (
-        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1 px-1">
           <AlertCircle className="w-3 h-3" />
           {error}
         </p>
@@ -210,46 +192,41 @@ function EmailVerificationInput({
   error?: string;
 }) {
   return (
-    <div className="relative">
-      <div className="relative">
-        <Input
-          type="email"
-          value={email}
-          onChange={onEmailChange}
-          placeholder="Email *"
-          disabled={verified}
-          className={`
-            h-12 pt-2 pr-10
-            ${verified 
-              ? 'bg-blue-50/80 border-blue-300 text-gray-800' 
-              : 'bg-slate-50/80 border-slate-200/80 text-gray-800'}
-            rounded-xl
-            placeholder:text-gray-400 placeholder:text-sm
-            focus:bg-white focus:border-blue-400
-            transition-all duration-200
-            ${error ? 'border-red-400 bg-red-50/50' : ''}
-          `}
-        />
-        {email && (
-          <button
-            type="button"
-            onClick={onClear}
-            className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-              verified 
-                ? 'bg-green-500 text-white' 
-                : 'bg-gray-300 hover:bg-gray-400'
-            }`}
-          >
-            {verified ? (
-              <Check className="w-3 h-3 text-white" />
-            ) : (
-              <X className="w-3 h-3 text-white" />
-            )}
-          </button>
-        )}
+    <div>
+      <div className={`input-group rounded-xl px-4 py-3 relative ${error ? 'border-red-400 bg-red-50/50' : ''} ${verified ? 'border-indigo-300 bg-indigo-50/50' : ''}`}>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+          Email *
+        </label>
+        <div className="relative">
+          <Input
+            type="email"
+            value={email}
+            onChange={onEmailChange}
+            placeholder="Enter email"
+            disabled={verified}
+            className="h-8 border-0 bg-transparent shadow-none p-0 pr-8 text-slate-900 font-medium focus-visible:ring-0 placeholder:text-slate-300"
+          />
+          {email && (
+            <button
+              type="button"
+              onClick={onClear}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                verified
+                  ? 'bg-green-500 text-white'
+                  : 'bg-slate-300 hover:bg-slate-400'
+              }`}
+            >
+              {verified ? (
+                <Check className="w-3 h-3 text-white" />
+              ) : (
+                <X className="w-3 h-3 text-white" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
       {error && (
-        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1 px-1">
           <AlertCircle className="w-3 h-3" />
           {error}
         </p>
@@ -266,6 +243,7 @@ export function DriverDataStep() {
     uploadingFiles,
     uploadedFiles,
     uploadErrors,
+    maxCompletedStep,
   } = state;
 
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
@@ -302,7 +280,6 @@ export function DriverDataStep() {
       type: 'UPDATE_DRIVER',
       payload: { index, field, value },
     });
-    // Clear validation error for this field
     setValidationErrors((prev) => {
       const key = `${index}_${field}`;
       if (prev[key]) {
@@ -316,7 +293,6 @@ export function DriverDataStep() {
 
   const addDriver = () => {
     dispatch({ type: 'ADD_DRIVER' });
-    // Set initial verification step for new driver
     setVerificationSteps(prev => new Map(prev).set(drivers.length, 'email'));
   };
 
@@ -324,10 +300,9 @@ export function DriverDataStep() {
     dispatch({ type: 'REMOVE_DRIVER', payload: index });
   };
 
-  // Handle email verification - Step 1: Send pass
   const handleSendPass = async (driverIndex: number) => {
     const email = drivers[driverIndex].email;
-    
+
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setVerificationErrors(prev => new Map(prev).set(driverIndex, 'Please enter a valid email'));
       return;
@@ -342,18 +317,16 @@ export function DriverDataStep() {
 
     try {
       const result = await sendPassAction(email);
-      
+
       if (result.error) {
         setVerificationErrors(prev => new Map(prev).set(driverIndex, result.error!));
         return;
       }
 
       if (result.send) {
-        // User exists, show code input
         setCodeSent(prev => new Map(prev).set(driverIndex, true));
         setVerificationSteps(prev => new Map(prev).set(driverIndex, 'code'));
       } else {
-        // User doesn't exist, show full form
         setVerificationSteps(prev => new Map(prev).set(driverIndex, 'form'));
       }
     } catch (error) {
@@ -363,7 +336,6 @@ export function DriverDataStep() {
     }
   };
 
-  // Handle email verification - Step 2: Verify code
   const handleVerifyCode = async (driverIndex: number) => {
     const email = drivers[driverIndex].email;
     const code = verificationCodes.get(driverIndex) || '';
@@ -382,13 +354,12 @@ export function DriverDataStep() {
 
     try {
       const result = await verifyContactAction(email, code);
-      
+
       if (result.error || !result.driver) {
         setVerificationErrors(prev => new Map(prev).set(driverIndex, result.error || 'Verification failed'));
         return;
       }
 
-      // Prefill driver data from verified contact
       const contactDriver = result.driver;
       updateDriver(driverIndex, 'first_name', contactDriver.first_name || '');
       updateDriver(driverIndex, 'last_name', contactDriver.last_name || '');
@@ -398,7 +369,6 @@ export function DriverDataStep() {
       updateDriver(driverIndex, 'address', contactDriver.address || '');
       updateDriver(driverIndex, 'birthday', contactDriver.birthday || '');
 
-      // Move to form step
       setVerificationSteps(prev => new Map(prev).set(driverIndex, 'form'));
     } catch (error) {
       setVerificationErrors(prev => new Map(prev).set(driverIndex, 'Verification failed'));
@@ -407,7 +377,6 @@ export function DriverDataStep() {
     }
   };
 
-  // Reset email verification
   const handleResetEmail = (driverIndex: number) => {
     updateDriver(driverIndex, 'email', '');
     setVerificationSteps(prev => new Map(prev).set(driverIndex, 'email'));
@@ -437,7 +406,6 @@ export function DriverDataStep() {
       const file = fileArray[i];
       const uploadKey = `${driverIndex}_${Date.now()}_${i}`;
 
-      // Set uploading state
       dispatch({ type: 'SET_UPLOADING_FILE', payload: { key: uploadKey, uploading: true } });
       dispatch({ type: 'SET_UPLOAD_ERROR', payload: { key: uploadKey, error: null } });
 
@@ -454,13 +422,11 @@ export function DriverDataStep() {
 
           const response = result.data;
 
-          // Add to uploaded files
           dispatch({
             type: 'ADD_UPLOADED_FILE',
             payload: { driverIndex, file: { ...response, name: file.name } },
           });
 
-          // Update driver's license_photo array
           const currentPhotos = drivers[driverIndex].license_photo || [];
           dispatch({
             type: 'UPDATE_DRIVER',
@@ -490,13 +456,11 @@ export function DriverDataStep() {
   const removeUploadedFile = (driverIndex: number, fileIndex: number) => {
     const fileToRemove = uploadedFiles[driverIndex]?.[fileIndex];
     if (fileToRemove) {
-      // Remove from uploaded files
       dispatch({
         type: 'REMOVE_UPLOADED_FILE',
         payload: { driverIndex, fileIndex },
       });
 
-      // Remove from driver's license_photo array
       const currentPhotos = drivers[driverIndex].license_photo || [];
       dispatch({
         type: 'UPDATE_DRIVER',
@@ -514,7 +478,6 @@ export function DriverDataStep() {
     let isValid = true;
 
     drivers.forEach((driver, index) => {
-      // Check if driver is in form step
       const step = verificationSteps.get(index) || 'email';
       if (step !== 'form') {
         errors[`${index}_verification`] = 'Please complete email verification';
@@ -544,13 +507,11 @@ export function DriverDataStep() {
         }
       });
 
-      // Email validation
       if (driver.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(driver.email)) {
         errors[`${index}_email`] = 'Please enter a valid email';
         isValid = false;
       }
 
-      // Date validations
       if (driver.birthday) {
         const birthDate = new Date(driver.birthday);
         const today = new Date();
@@ -581,7 +542,6 @@ export function DriverDataStep() {
       return;
     }
 
-    // Save to localStorage
     if (orderId) {
       localStorage.setItem(`driverInfo_${orderId}`, JSON.stringify(drivers));
     }
@@ -593,7 +553,30 @@ export function DriverDataStep() {
   const isAnyUploading = Object.keys(uploadingFiles).length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <button
+            type="button"
+            onClick={prevStep}
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
+            Driver Details
+          </h2>
+          <p className="text-slate-500 mt-1">Enter your information to continue</p>
+        </div>
+        <Stepper
+          currentStep={3}
+          steps={bookingSteps}
+          maxCompletedStep={maxCompletedStep}
+        />
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {drivers.map((driver, driverIndex) => {
           const currentStep = verificationSteps.get(driverIndex) || 'email';
@@ -605,7 +588,7 @@ export function DriverDataStep() {
           return (
             <div
               key={driverIndex}
-              className="bg-card rounded-2xl border border-border relative overflow-hidden"
+              className="bg-white rounded-[2rem] border border-slate-200 relative overflow-hidden"
             >
               {/* Remove Driver Button */}
               {driverIndex > 0 && (
@@ -621,49 +604,48 @@ export function DriverDataStep() {
               )}
 
               {/* Section Header */}
-              <div className="text-center py-4 border-b border-border/50">
-                <h3 className="text-base font-semibold text-foreground">
+              <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+                <h3 className="text-base font-semibold text-slate-900">
                   {driverIndex === 0 ? 'Head driver' : `Additional Driver ${driverIndex}`}
                 </h3>
               </div>
 
               {/* Email Verification Step */}
               {currentStep === 'email' && (
-                <div className="p-4 sm:p-5 space-y-4">
+                <div className="p-6 space-y-4">
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <Input
-                        type="email"
-                        value={driver.email}
-                        onChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
-                        placeholder="Email *"
-                        className={`
-                          h-12 
-                          bg-card border-border 
-                          rounded-xl text-foreground
-                          placeholder:text-muted-foreground placeholder:text-sm
-                          focus:bg-card focus:border-primary/50
-                          transition-all duration-200
-                          ${error ? 'border-destructive/50 bg-destructive/5' : ''}
-                        `}
-                      />
+                      <div className="input-group rounded-xl px-4 py-3">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+                          Email *
+                        </label>
+                        <Input
+                          type="email"
+                          value={driver.email}
+                          onChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
+                          placeholder="Enter your email"
+                          className={`h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0 placeholder:text-slate-300 ${error ? 'text-red-600' : ''}`}
+                        />
+                      </div>
                     </div>
-                    <Button
-                      type="button"
-                      onClick={() => handleSendPass(driverIndex)}
-                      disabled={isLoading || !driver.email}
-                      className="h-12 px-6 rounded-xl"
-                    >
-                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Next'}
-                    </Button>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        onClick={() => handleSendPass(driverIndex)}
+                        disabled={isLoading || !driver.email}
+                        className="h-[58px] px-6 rounded-xl"
+                      >
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Next'}
+                      </Button>
+                    </div>
                   </div>
                   {error && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
+                    <p className="text-xs text-red-500 flex items-center gap-1 px-1">
                       <AlertCircle className="w-3 h-3" />
                       {error}
                     </p>
                   )}
-                  <p className="text-center text-sm text-muted-foreground">
+                  <p className="text-center text-sm text-slate-400">
                     Please add your email to speed up the booking process
                   </p>
                 </div>
@@ -671,7 +653,7 @@ export function DriverDataStep() {
 
               {/* Code Verification Step */}
               {currentStep === 'code' && (
-                <div className="p-4 sm:p-5 space-y-4">
+                <div className="p-6 space-y-4">
                   <div className="flex gap-3">
                     <EmailVerificationInput
                       email={driver.email}
@@ -681,40 +663,47 @@ export function DriverDataStep() {
                       error={undefined}
                     />
                     <div className="flex-1">
-                      <Input
-                        type="text"
-                        value={code}
-                        onChange={(e) => setVerificationCodes(prev => new Map(prev).set(driverIndex, e.target.value))}
-                        placeholder="Code"
-                        className="h-12 bg-card border-border rounded-xl text-foreground placeholder:text-muted-foreground"
-                      />
+                      <div className="input-group rounded-xl px-4 py-3">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 block">
+                          Code
+                        </label>
+                        <Input
+                          type="text"
+                          value={code}
+                          onChange={(e) => setVerificationCodes(prev => new Map(prev).set(driverIndex, e.target.value))}
+                          placeholder="Enter code"
+                          className="h-8 border-0 bg-transparent shadow-none p-0 text-slate-900 font-medium focus-visible:ring-0 placeholder:text-slate-300"
+                        />
+                      </div>
                     </div>
-                    <Button
-                      type="button"
-                      onClick={() => handleVerifyCode(driverIndex)}
-                      disabled={isLoading || !code}
-                      className="h-12 px-6 rounded-xl"
-                    >
-                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                    </Button>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        onClick={() => handleVerifyCode(driverIndex)}
+                        disabled={isLoading || !code}
+                        className="h-[58px] px-6 rounded-xl"
+                      >
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                      </Button>
+                    </div>
                   </div>
                   {error && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
+                    <p className="text-xs text-red-500 flex items-center gap-1 px-1">
                       <AlertCircle className="w-3 h-3" />
                       {error}
                     </p>
                   )}
                   <div className="text-center space-y-1">
-                    <p className="text-sm text-muted-foreground">
-                      Code has been sent to e-mail: <span className="text-primary font-medium">{driver.email}</span>
+                    <p className="text-sm text-slate-400">
+                      Code has been sent to: <span className="text-indigo-600 font-medium">{driver.email}</span>
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-slate-400">
                       Code not received?{' '}
                       <button
                         type="button"
                         onClick={() => handleSendPass(driverIndex)}
                         disabled={isLoading}
-                        className="text-foreground underline hover:text-primary border border-border px-2 py-0.5 rounded text-xs"
+                        className="text-slate-900 underline hover:text-indigo-600 text-xs"
                       >
                         Try again
                       </button>
@@ -727,10 +716,9 @@ export function DriverDataStep() {
               {currentStep === 'form' && (
                 <>
                   {/* Personal Information */}
-                  <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
-                    {/* Row 1: First Name, Second Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <FloatingInput
+                  <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
                         id={`driver_${driverIndex}_first_name`}
                         label="First Name"
                         value={driver.first_name}
@@ -738,9 +726,9 @@ export function DriverDataStep() {
                         error={validationErrors[`${driverIndex}_first_name`]}
                         required
                       />
-                      <FloatingInput
+                      <InputGroup
                         id={`driver_${driverIndex}_last_name`}
-                        label="Second Name"
+                        label="Last Name"
                         value={driver.last_name}
                         onChange={(e) => updateDriver(driverIndex, 'last_name', e.target.value)}
                         error={validationErrors[`${driverIndex}_last_name`]}
@@ -748,8 +736,7 @@ export function DriverDataStep() {
                       />
                     </div>
 
-                    {/* Row 2: Email, Phone */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <EmailVerificationInput
                         email={driver.email}
                         onEmailChange={(e) => updateDriver(driverIndex, 'email', e.target.value)}
@@ -757,9 +744,9 @@ export function DriverDataStep() {
                         verified={codeSent.get(driverIndex) || false}
                         error={validationErrors[`${driverIndex}_email`]}
                       />
-                      <FloatingInput
+                      <InputGroup
                         id={`driver_${driverIndex}_phone`}
-                        label="Phone number"
+                        label="Phone Number"
                         type="tel"
                         value={driver.phone}
                         onChange={(e) => updateDriver(driverIndex, 'phone', e.target.value)}
@@ -768,16 +755,15 @@ export function DriverDataStep() {
                       />
                     </div>
 
-                    {/* Row 3: Country, City */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <FloatingSelect
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <SelectGroup
                         id={`driver_${driverIndex}_country`}
                         label="Country"
                         value={driver.country}
                         onValueChange={(value) => updateDriver(driverIndex, 'country', value)}
                         error={validationErrors[`${driverIndex}_country`]}
                         disabled={loadingCountries}
-                        placeholder={loadingCountries ? 'Loading...' : 'Country *'}
+                        placeholder={loadingCountries ? 'Loading...' : 'Select country'}
                         required
                       >
                         {countries.map((country) => (
@@ -785,8 +771,8 @@ export function DriverDataStep() {
                             {country.name}
                           </SelectItem>
                         ))}
-                      </FloatingSelect>
-                      <FloatingInput
+                      </SelectGroup>
+                      <InputGroup
                         id={`driver_${driverIndex}_city`}
                         label="City"
                         value={driver.city}
@@ -796,9 +782,8 @@ export function DriverDataStep() {
                       />
                     </div>
 
-                    {/* Row 4: Address, Date of birthday */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <FloatingInput
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
                         id={`driver_${driverIndex}_address`}
                         label="Address"
                         value={driver.address}
@@ -806,9 +791,9 @@ export function DriverDataStep() {
                         error={validationErrors[`${driverIndex}_address`]}
                         required
                       />
-                      <FloatingDateInput
+                      <DateGroup
                         id={`driver_${driverIndex}_birthday`}
-                        label="Date of birthday"
+                        label="Date of Birth"
                         value={driver.birthday}
                         onChange={(e) => updateDriver(driverIndex, 'birthday', e.target.value)}
                         error={validationErrors[`${driverIndex}_birthday`]}
@@ -818,32 +803,31 @@ export function DriverDataStep() {
                   </div>
 
                   {/* Driver License Section */}
-                  <div className="px-4 sm:px-5 pb-4 sm:pb-5">
-                    <h4 className="text-sm font-semibold text-foreground mb-4">
-                      Driver license
+                  <div className="px-6 pb-6">
+                    <h4 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">
+                      Driver License
                     </h4>
 
-                    {/* License Fields - responsive: 1 col mobile, 3 cols desktop */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                      <FloatingInput
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                      <InputGroup
                         id={`driver_${driverIndex}_license_num`}
-                        label="Document number"
+                        label="Document Number"
                         value={driver.license_num}
                         onChange={(e) => updateDriver(driverIndex, 'license_num', e.target.value)}
                         error={validationErrors[`${driverIndex}_license_num`]}
                         required
                       />
-                      <FloatingDateInput
+                      <DateGroup
                         id={`driver_${driverIndex}_license_from`}
-                        label="Issue date"
+                        label="Issue Date"
                         value={driver.license_from}
                         onChange={(e) => updateDriver(driverIndex, 'license_from', e.target.value)}
                         error={validationErrors[`${driverIndex}_license_from`]}
                         required
                       />
-                      <FloatingDateInput
+                      <DateGroup
                         id={`driver_${driverIndex}_license_to`}
-                        label="Exp date"
+                        label="Expiry Date"
                         value={driver.license_to}
                         onChange={(e) => updateDriver(driverIndex, 'license_to', e.target.value)}
                         error={validationErrors[`${driverIndex}_license_to`]}
@@ -851,20 +835,20 @@ export function DriverDataStep() {
                       />
                     </div>
 
-                    {/* Upload Area - Compact */}
-                    <div className="flex flex-wrap items-start gap-3 sm:gap-4">
+                    {/* Upload Area */}
+                    <div className="flex flex-wrap items-start gap-4">
                       <label
                         htmlFor={`driver_${driverIndex}_license_photo`}
-                        className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
+                        className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all duration-200"
                       >
                         {Object.keys(uploadingFiles).some((key) =>
                           key.startsWith(`${driverIndex}_`)
                         ) ? (
-                          <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                          <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
                         ) : (
                           <>
-                            <Plus className="w-5 h-5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground mt-1">Upload</span>
+                            <Plus className="w-5 h-5 text-slate-400" />
+                            <span className="text-xs text-slate-400 mt-1">Upload</span>
                           </>
                         )}
                         <Input
@@ -877,13 +861,12 @@ export function DriverDataStep() {
                         />
                       </label>
 
-                      {/* Uploaded Files - Horizontal scroll */}
                       {uploadedFiles[driverIndex] && uploadedFiles[driverIndex].length > 0 && (
                         <div className="flex-1 flex gap-3 overflow-x-auto py-1">
                           {uploadedFiles[driverIndex].map((file, fileIndex) => (
                             <div
                               key={`${driverIndex}_${fileIndex}`}
-                              className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-border overflow-hidden bg-muted/30 group"
+                              className="relative flex-shrink-0 w-20 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 group"
                             >
                               {file.url ? (
                                 <img
@@ -896,7 +879,7 @@ export function DriverDataStep() {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                                  <ImageIcon className="w-6 h-6 text-slate-400" />
                                 </div>
                               )}
                               <button
@@ -927,23 +910,24 @@ export function DriverDataStep() {
             </div>
           );
         })}
-        {/* Add New Driver Button - Part of drivers section */}
+
+        {/* Add New Driver Button */}
         <button
           type="button"
           onClick={addDriver}
-          className="w-full py-4 border-2 border-dashed border-border rounded-2xl text-primary font-medium hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center gap-2"
+          className="w-full py-4 border-2 border-dashed border-slate-300 rounded-[2rem] text-indigo-600 font-medium hover:border-indigo-400 hover:bg-indigo-50/50 transition-all duration-200 flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Add new driver
         </button>
 
-        {/* Continue Button - Standalone action */}
+        {/* Continue Button */}
         <div className="pt-4">
           <Button
             type="submit"
             size="lg"
             disabled={isAnyUploading}
-            className="w-full rounded-xl py-6 bg-primary hover:bg-primary/90 text-base font-medium"
+            className="w-full rounded-xl py-6 bg-slate-900 hover:bg-indigo-600 text-base font-medium"
           >
             {isAnyUploading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Continue to Extras

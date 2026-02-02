@@ -118,7 +118,7 @@ export interface CreateOrderParams {
 export interface CreateOrderResponse {
   id?: string;
   order_id?: string;
-  [key: string]: any; // Allow for other fields in the response
+  [key: string]: unknown; // Allow for other fields in the response
 }
 
 export interface Driver {
@@ -180,7 +180,7 @@ export interface UpdateOrderParams {
 }
 
 export interface UpdateOrderResponse {
-  [key: string]: any; // Response structure may vary
+  [key: string]: unknown; // Response structure may vary
 }
 
 export interface CancelOrderResponse {
