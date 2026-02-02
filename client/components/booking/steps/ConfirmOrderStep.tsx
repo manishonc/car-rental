@@ -15,6 +15,8 @@ import {
   Banknote,
   Clock,
   ArrowLeft,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { useBooking } from '../BookingContext';
 import { updateOrderAction, confirmOrderAction } from '@/app/actions';
@@ -42,6 +44,7 @@ export function ConfirmOrderStep() {
   } = state;
 
   const [localError, setLocalError] = useState<string | null>(null);
+  const [mobileOrderExpanded, setMobileOrderExpanded] = useState(false);
 
   const selectedInsuranceData = calculatedInsurances.find(
     (calc) => calc.option.id === selectedInsurance
@@ -408,6 +411,90 @@ export function ConfirmOrderStep() {
             )}
           </div>
 
+          {/* Mobile Order Summary - Collapsible (only visible on mobile) */}
+          <div className="lg:hidden">
+            <div className="bg-slate-900 text-white rounded-2xl overflow-hidden">
+              {/* Compact header - always visible */}
+              <button
+                type="button"
+                onClick={() => setMobileOrderExpanded(!mobileOrderExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center">
+                    <Car className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs text-slate-400 uppercase tracking-wide">Total</p>
+                    <p className="font-bold text-lg text-white">
+                      {totalPrice.toFixed(2)} {currency}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span className="text-xs">View details</span>
+                  {mobileOrderExpanded ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </div>
+              </button>
+
+              {/* Expandable details */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  mobileOrderExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div className="px-5 pb-5 space-y-3 border-t border-white/10">
+                  {selectedVehicle && (
+                    <div className="flex justify-between items-center pt-4">
+                      <div>
+                        <p className="font-medium text-white text-sm">{selectedVehicle.brand} {selectedVehicle.mark}</p>
+                        <p className="text-xs text-slate-400">{selectedVehicle.group}</p>
+                      </div>
+                      <p className="font-medium text-white text-sm">
+                        {vehicleBasePrice.toFixed(2)} {currency}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedInsuranceData && (
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-white text-sm">{selectedInsuranceData.option.title}</p>
+                        <p className="text-xs text-slate-400">Insurance</p>
+                      </div>
+                      <p className="font-medium text-white text-sm">
+                        {insurancePrice.toFixed(2)} {currency}
+                      </p>
+                    </div>
+                  )}
+
+                  {searchDates && (
+                    <div className="pt-3 border-t border-white/10 space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {new Date(searchDates.dateFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                          {' → '}
+                          {new Date(searchDates.dateTo).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      {locationData && (
+                        <div className="flex items-center gap-2 text-slate-400">
+                          <MapPin className="w-4 h-4" />
+                          <span>{locationData.name}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Terms & Conditions */}
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -472,8 +559,8 @@ export function ConfirmOrderStep() {
           </div>
         </div>
 
-        {/* Right: Dark Order Summary (2 cols) */}
-        <div className="lg:col-span-2">
+        {/* Right: Dark Order Summary (2 cols) - Desktop only */}
+        <div className="hidden lg:block lg:col-span-2">
           <div className="bg-slate-900 text-white rounded-[2rem] p-6 sticky top-8 relative overflow-hidden">
             {/* Decorative indigo blur */}
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-600/30 rounded-full blur-3xl" />
@@ -522,7 +609,7 @@ export function ConfirmOrderStep() {
                     <Calendar className="w-4 h-4" />
                     <span>
                       {new Date(searchDates.dateFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                      {' '}&rarr;{' '}
+                      {' '}→{' '}
                       {new Date(searchDates.dateTo).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>

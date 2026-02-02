@@ -46,6 +46,8 @@ export function SearchStep() {
   );
   const pickupRef = useRef<HTMLInputElement>(null);
   const returnRef = useRef<HTMLInputElement>(null);
+  const pickupContainerRef = useRef<HTMLDivElement>(null);
+  const returnContainerRef = useRef<HTMLDivElement>(null);
 
   // Format helper for datetime-local input (YYYY-MM-DDTHH:MM)
   const formatDateTime = (date: Date) => {
@@ -53,6 +55,27 @@ export function SearchStep() {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
   const getMinDateTime = () => formatDateTime(new Date());
+
+  // Handler functions for mobile date picker - ensure picker opens on first click
+  const handlePickupClick = () => {
+    setPickupFocused(true);
+    setTimeout(() => {
+      pickupRef.current?.focus();
+      pickupRef.current?.showPicker?.();
+    }, 10);
+  };
+
+  const handleReturnClick = () => {
+    // Reset pickup focused state if no value was selected
+    if (pickupFocused && !pickupValue) {
+      setPickupFocused(false);
+    }
+    setReturnFocused(true);
+    setTimeout(() => {
+      returnRef.current?.focus();
+      returnRef.current?.showPicker?.();
+    }, 10);
+  };
 
   // Format display value for date inputs
   const formatDisplayValue = (val: string) => {
@@ -87,6 +110,33 @@ export function SearchStep() {
       setDropLocation(selectedLocation);
     }
   }, [selectedLocation, differentDropLocation]);
+
+  // Handle clicks outside date inputs to reset focused state if no value selected
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isPickupArea = pickupContainerRef.current?.contains(target);
+      const isReturnArea = returnContainerRef.current?.contains(target);
+      
+      // Only reset if click is outside both date input areas
+      if (!isPickupArea && pickupFocused && !pickupValue) {
+        setPickupFocused(false);
+      }
+      if (!isReturnArea && returnFocused && !returnValue) {
+        setReturnFocused(false);
+      }
+    };
+
+    // Use a small delay to avoid conflicts with the showPicker() call
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [pickupFocused, pickupValue, returnFocused, returnValue]);
 
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -233,23 +283,30 @@ export function SearchStep() {
             {/* Row 2: Dates and Search Button */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {/* Pickup DateTime */}
-              <div className="relative group">
+              <div ref={pickupContainerRef} className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
                   <Calendar className="w-5 h-5" />
                 </div>
                 {pickupFocused || pickupValue ? (
-                  <input
-                    ref={pickupRef}
-                    type="datetime-local"
-                    name="pickup_datetime"
-                    id="pickup_datetime"
-                    className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 transition-all"
-                    value={pickupValue}
-                    onChange={(e) => setPickupValue(e.target.value)}
-                    onBlur={() => { if (!pickupValue) setPickupFocused(false); }}
-                    min={getMinDateTime()}
-                    autoFocus={pickupFocused && !pickupValue}
-                  />
+                  <>
+                    <input
+                      ref={pickupRef}
+                      type="datetime-local"
+                      name="pickup_datetime"
+                      id="pickup_datetime"
+                      className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 transition-all"
+                      value={pickupValue}
+                      onChange={(e) => setPickupValue(e.target.value)}
+                      onBlur={() => { if (!pickupValue) setPickupFocused(false); }}
+                      min={getMinDateTime()}
+                      autoFocus={pickupFocused && !pickupValue}
+                    />
+                    {!pickupValue && (
+                      <div className="absolute left-12 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-sm font-medium">
+                        Pick-up Date & Time
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <input
                     type="text"
@@ -258,8 +315,8 @@ export function SearchStep() {
                     className="w-full h-14 md:h-16 bg-slate-50 hover:bg-slate-100 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 cursor-pointer transition-all"
                     placeholder="Pick-up Date & Time"
                     onChange={() => {}}
-                    onFocus={() => setPickupFocused(true)}
-                    onClick={() => setPickupFocused(true)}
+                    onFocus={handlePickupClick}
+                    onClick={handlePickupClick}
                   />
                 )}
                 {/* Hidden input for form submission when using placeholder */}
@@ -269,23 +326,30 @@ export function SearchStep() {
               </div>
 
               {/* Return DateTime */}
-              <div className="relative group">
+              <div ref={returnContainerRef} className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none">
                   <Calendar className="w-5 h-5" />
                 </div>
                 {returnFocused || returnValue ? (
-                  <input
-                    ref={returnRef}
-                    type="datetime-local"
-                    name="return_datetime"
-                    id="return_datetime"
-                    className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 transition-all"
-                    value={returnValue}
-                    onChange={(e) => setReturnValue(e.target.value)}
-                    onBlur={() => { if (!returnValue) setReturnFocused(false); }}
-                    min={getMinDateTime()}
-                    autoFocus={returnFocused && !returnValue}
-                  />
+                  <>
+                    <input
+                      ref={returnRef}
+                      type="datetime-local"
+                      name="return_datetime"
+                      id="return_datetime"
+                      className="w-full h-14 md:h-16 bg-slate-50 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 transition-all"
+                      value={returnValue}
+                      onChange={(e) => setReturnValue(e.target.value)}
+                      onBlur={() => { if (!returnValue) setReturnFocused(false); }}
+                      min={getMinDateTime()}
+                      autoFocus={returnFocused && !returnValue}
+                    />
+                    {!returnValue && (
+                      <div className="absolute left-12 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-sm font-medium">
+                        Return Date & Time
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <input
                     type="text"
@@ -294,8 +358,8 @@ export function SearchStep() {
                     className="w-full h-14 md:h-16 bg-slate-50 hover:bg-slate-100 rounded-[1.25rem] pl-12 pr-3 text-sm text-slate-400 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 border border-transparent focus:border-indigo-500 cursor-pointer transition-all"
                     placeholder="Return Date & Time"
                     onChange={() => {}}
-                    onFocus={() => setReturnFocused(true)}
-                    onClick={() => setReturnFocused(true)}
+                    onFocus={handleReturnClick}
+                    onClick={handleReturnClick}
                   />
                 )}
                 {!returnFocused && !returnValue && (
